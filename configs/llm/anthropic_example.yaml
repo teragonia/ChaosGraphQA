@@ -1,0 +1,14 @@
+# Example Anthropic configuration
+provider_name: "anthropic"
+model_name: "claude-3.5-sonnet"
+api_key: "${ANTHROPIC_API_KEY}"  # Environment variable
+temperature: 0.1
+max_tokens: 1000
+timeout: 30
+rate_limit_delay: 0.2  # Anthropic has stricter rate limits
+
+# Anthropic-specific parameters
+extra_params:
+  top_p: 1.0
+  top_k: 40
+  # system: "You are a helpful AI assistant focused on reasoning tasks."

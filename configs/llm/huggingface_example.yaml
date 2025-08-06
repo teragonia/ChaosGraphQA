@@ -1,0 +1,19 @@
+# Example HuggingFace configuration
+provider_name: "huggingface" 
+model_name: "distilgpt2"
+api_key: "${HF_TOKEN}"  # Optional for public models
+temperature: 0.1
+max_tokens: 1000
+timeout: 60  # Local inference might be slower
+rate_limit_delay: 0.0  # No rate limiting for local inference
+
+extra_params:
+  # Choose inference mode: 'api' or 'local'
+  inference_mode: "api"  # Use HuggingFace Inference API
+  # inference_mode: "local"  # Download and run locally
+  
+  # HuggingFace-specific parameters
+  top_p: 1.0
+  top_k: 50
+  repetition_penalty: 1.1
+  do_sample: true
