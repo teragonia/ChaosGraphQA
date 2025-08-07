@@ -1,2 +1,0 @@
-[console_scripts]
-kgrb = kgrb.cli.main:cli

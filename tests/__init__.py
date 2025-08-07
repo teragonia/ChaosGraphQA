@@ -1,1 +1,1 @@
-"""Tests for KGRB."""
+"""Tests for ChaosGraphQA."""

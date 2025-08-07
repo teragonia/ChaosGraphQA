@@ -1,22 +1,31 @@
 #!/usr/bin/env python3
 """
-KGRB Leaderboard Evaluation - Fixed Version
+ChaosGraphQA Leaderboard Evaluation - Organized Structure Version
 
 This script evaluates specified models across all reasoning types and creates
-a comprehensive leaderboard with detailed performance metrics.
+a comprehensive leaderboard with detailed performance metrics using the
+organized directory structure to prevent root directory clutter.
 """
 
 import subprocess
 import json
 import time
+import sys
+import os
+import tempfile
+import re
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 import os
 
+# Add src to path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+from cgqa.utils.directory_manager import DirectoryManager, get_default_directory_manager
+
 # API Keys
-ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
-OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "your_anthropic_api_key_here")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "your_openai_api_key_here")
 
 # Target models
 MODELS = [
@@ -60,55 +69,193 @@ BASE_SEEDS = [42, 123, 456]  # Different seeds for each run
 MAX_PARALLEL_RUNS = 3  # Number of parallel runs (be careful with API rate limits)
 ENABLE_PARALLEL = True  # Set to False to run sequentially (safer for API limits)
 
+# Directory management
+DIR_MANAGER = get_default_directory_manager()
+LEADERBOARD_OUTPUT_DIR = DIR_MANAGER.base_dir / "analysis" / "leaderboard"
+LEADERBOARD_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
 def generate_benchmark_with_seed(reasoning_type, seed, run_number):
-    """Generate a benchmark with a specific seed."""
-    benchmark_file = f"benchmark_{reasoning_type}_run{run_number}.json"
+    """Generate a benchmark with a specific seed using organized structure."""
+    # Create a unique temporary file to receive the benchmark path
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+        temp_path = temp_file.name
     
+    # Let the CLI handle the organized path automatically and write result to file
     cmd = [
-        "python", "-m", "kgrb.cli.main", "generate",
+        "python", "-m", "cgqa.cli.main", "generate",
         "--generator-type", reasoning_type,
         "--complexity", "2",
         "--num-questions", "10", 
         "--seed", str(seed),
-        "--output", benchmark_file,
-        "--verify"
+        "--verify",
+        "--output-info", temp_path  # New flag to write path info to file
     ]
     
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    # Use larger buffer and timeout for parallel execution
+    result = subprocess.run(cmd, capture_output=True, text=True, 
+                          timeout=300, bufsize=-1)
     
     if result.returncode != 0:
-        print(f"❌ Failed to generate {benchmark_file}")
+        print(f"❌ Failed to generate benchmark for {reasoning_type} run {run_number}")
+        # Clean up temp file
+        try:
+            os.unlink(temp_path)
+        except:
+            pass
         return None
     
-    return benchmark_file
+    # Read the benchmark path from the temporary file
+    benchmark_file = None
+    try:
+        if os.path.exists(temp_path):
+            with open(temp_path, 'r') as f:
+                info = json.load(f)
+                benchmark_file = info.get("benchmark_path")
+            
+            # Clean up temp file
+            os.unlink(temp_path)
+            
+            if benchmark_file and os.path.exists(benchmark_file):
+                print(f"   📁 Generated benchmark: {benchmark_file}")
+                return benchmark_file
+    except Exception as e:
+        print(f"   ⚠️ Failed to read benchmark path from temp file: {e}")
+    
+    # Fallback: Extract from stdout (existing logic)
+    output_text = result.stdout
+    if "Benchmark saved to" in output_text:
+        # Find the start of the path after "Benchmark saved to"
+        start_idx = output_text.find("Benchmark saved to") + len("Benchmark saved to")
+        # Find the next occurrence of ".json" to get the end of the path
+        end_idx = output_text.find(".json", start_idx)
+        if end_idx != -1:
+            # Extract the path and clean it up
+            benchmark_file = output_text[start_idx:end_idx + 5]  # +5 to include ".json"
+            # Remove ANSI color codes, newlines, and extra whitespace
+            benchmark_file = re.sub(r'\x1b\[[0-9;]*m', '', benchmark_file)
+            # Replace all whitespace sequences (including newlines) with empty string
+            benchmark_file = re.sub(r'\s+', '', benchmark_file)
+            # Clean up the path
+            benchmark_file = benchmark_file.strip()
+            
+            if benchmark_file and os.path.exists(benchmark_file):
+                print(f"   📁 Generated benchmark (fallback): {benchmark_file}")
+                return benchmark_file
+    
+    print(f"❌ Failed to extract benchmark path for {reasoning_type} run {run_number}")
+    return None
 
 def run_single_evaluation(model, reasoning_type, run_number, benchmark_file):
-    """Run a single evaluation with a specific benchmark."""
-    result_file = f"results_{model['id'].replace('/', '_')}_{reasoning_type}_run{run_number}.json"
+    """Run a single evaluation with a specific benchmark using organized structure."""
+    # Create a unique temporary file to receive the result path
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+        temp_path = temp_file.name
     
+    # Let the CLI handle the organized path automatically and write result to file
     cmd = [
-        "python", "-m", "kgrb.cli.main", "evaluate",
+        "python", "-m", "cgqa.cli.main", "evaluate",
         benchmark_file,
         "--model", model["id"],
         "--api-key", model["api_key"],
-        "--output", result_file,
         "--temperature", "0.1",
-        "--max-tokens", "1500"
+        "--max-tokens", "1500",
+        "--output-info", temp_path  # New flag to write path info to file
     ]
     
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    # Use larger buffer and timeout for parallel execution
+    result = subprocess.run(cmd, capture_output=True, text=True, 
+                          timeout=300, bufsize=-1)
     
     # Success if return code is 0, regardless of stderr warnings
     if result.returncode != 0:
         print(f"❌ Evaluation failed with return code {result.returncode}")
         if result.stderr and "RuntimeWarning" not in result.stderr:
             print(f"   Error: {result.stderr.strip()[-200:]}")
+        # Also show stdout for context
+        if result.stdout:
+            print(f"   Last output: ...{result.stdout.strip()[-300:]}")
+        # Clean up temp file
+        try:
+            os.unlink(temp_path)
+        except:
+            pass
         return None
+    
+    # Read the result path from the temporary file
+    result_file = None
+    try:
+        if os.path.exists(temp_path):
+            with open(temp_path, 'r') as f:
+                info = json.load(f)
+                result_file = info.get("result_path")
+            
+            # Clean up temp file
+            os.unlink(temp_path)
+            
+            if result_file and os.path.exists(result_file):
+                print(f"   📊 Evaluation result: {result_file}")
+            else:
+                result_file = None
+    except Exception as e:
+        print(f"   ⚠️ Failed to read result path from temp file: {e}")
+    
+    # Fallback: Extract from stdout (existing logic)
+    if not result_file:
+        output_text = result.stdout
+        if "Results saved to" in output_text:
+            # Find the start of the path after "Results saved to"
+            start_idx = output_text.find("Results saved to") + len("Results saved to")
+            # Find the next occurrence of ".json" to get the end of the path
+            end_idx = output_text.find(".json", start_idx)
+            if end_idx != -1:
+                # Extract the path and clean it up
+                result_file = output_text[start_idx:end_idx + 5]  # +5 to include ".json"
+                # Remove ANSI color codes, newlines, and extra whitespace
+                result_file = re.sub(r'\x1b\[[0-9;]*m', '', result_file)
+                # Replace all whitespace sequences (including newlines) with empty string
+                result_file = re.sub(r'\s+', '', result_file)
+                # Clean up the path
+                result_file = result_file.strip()
+                
+                if result_file and os.path.exists(result_file):
+                    print(f"   📊 Evaluation result (fallback): {result_file}")
+                else:
+                    result_file = None
+    
+    # Enhanced fallback: try multiple approaches to find the result file
+    if not result_file:
+        print(f"❌ Could not extract result file path")
+        
+        # Search organized directory structure
+        benchmark_name = Path(benchmark_file).stem if benchmark_file else "unknown"
+        model_clean = model["id"].replace("/", "_").replace(":", "_")
+        expected_dir = Path("cgqa_outputs/evaluations") / benchmark_name / model_clean
+        
+        if expected_dir.exists():
+            json_files = list(expected_dir.glob("*.json"))
+            if json_files:
+                # Use the most recent file (likely the one just created)
+                result_file = str(max(json_files, key=lambda p: p.stat().st_mtime))
+                print(f"   ✓ Found result file in organized structure: {result_file}")
+        
+        # Wait a moment and try again (async file creation)
+        if not result_file:
+            print(f"   Waiting for file system sync...")
+            time.sleep(2)  # Brief wait for file system
+            if expected_dir.exists():
+                json_files = list(expected_dir.glob("*.json"))
+                if json_files:
+                    result_file = str(max(json_files, key=lambda p: p.stat().st_mtime))
+                    print(f"   ✓ Found result file after sync: {result_file}")
+        
+        if not result_file:
+            print(f"   All fallback methods failed")
+            return None
     
     # Parse results from output file
     try:
         if not Path(result_file).exists():
-            print(f"❌ Result file not created: {result_file}")
+            print(f"❌ Result file not found: {result_file}")
             return None
             
         with open(result_file, 'r') as f:
@@ -338,7 +485,7 @@ def create_leaderboard(results):
     # Create markdown
     timestamp = time.strftime("%Y-%m-%d %H:%M UTC")
     
-    markdown = f"""## 🏆 KGRB Leaderboard (Multi-Run Averaged)
+    markdown = f"""## 🏆 ChaosGraphQA Leaderboard (Multi-Run Averaged)
 
 *Generated: {timestamp}*  
 *Models: GPT-4o (Nov 2024), GPT-4.1 (Apr 2025), Claude Opus 4, Claude Sonnet 4, Claude 3.7 Sonnet*  
@@ -401,6 +548,15 @@ def create_leaderboard(results):
 - **Reproducible**: Different seeds prevent overfitting to specific test cases  
 
 This leaderboard demonstrates authentic reasoning performance through dynamic graph generation with statistical averaging that prevents memorization while ensuring reproducible and reliable results.
+
+### 📁 File Organization
+
+All benchmark and evaluation files are automatically organized in the `cgqa_outputs/` directory structure:
+- **Benchmarks**: `benchmarks/{{reasoning_type}}/complexity_{{level}}/`
+- **Evaluations**: `evaluations/{{benchmark_name}}/{{model_name}}/`
+- **Leaderboards**: `analysis/leaderboard/`
+
+This prevents root directory clutter and enables easy batch operations on related files.
 """
     
     return markdown
@@ -408,14 +564,17 @@ This leaderboard demonstrates authentic reasoning performance through dynamic gr
 def main():
     """Main execution function."""
     execution_mode = "Parallel" if ENABLE_PARALLEL else "Sequential"
-    print(f"🚀 KGRB Leaderboard Generation (Multi-Run Averaged with {execution_mode} Execution)")
+    print(f"🚀 ChaosGraphQA Leaderboard Generation (Multi-Run Averaged with {execution_mode} Execution)")
+    print(f"📁 Using organized directory structure: {DIR_MANAGER.base_dir}")
+    print(f"📊 Leaderboard output: {LEADERBOARD_OUTPUT_DIR}")
     print(f"🎯 Testing {len(MODELS)} models on {len(REASONING_TYPES)} reasoning types")
     print(f"🎲 Running {NUM_RUNS} evaluations per model-type combination with seeds {BASE_SEEDS}")
     if ENABLE_PARALLEL:
         print(f"⚡ Parallel execution: Up to {MAX_PARALLEL_RUNS} concurrent runs per evaluation")
     else:
         print("🔄 Sequential execution: One run at a time (safer for API limits)")
-    print("📋 Models: GPT-4o (Nov 2024), GPT-4.1 (Apr 2025), Claude Opus 4, Claude Sonnet 4, Claude 3.7 Sonnet\n")
+    print("📋 Models: GPT-4o (Nov 2024), GPT-4.1 (Apr 2025), Claude Opus 4, Claude Sonnet 4, Claude 3.7 Sonnet")
+    print(f"🗂️  Files will be organized automatically - no root directory clutter!\n")
     
     # Run evaluations
     results = []
@@ -452,14 +611,22 @@ def main():
     
     print(f"\n✅ Completed {len(results)}/{total_evals} evaluations")
     
-    # Create and save leaderboard
+    # Create and save leaderboard in organized structure
     markdown = create_leaderboard(results)
     
-    leaderboard_file = "LEADERBOARD.md"
+    # Generate timestamped filenames
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    leaderboard_file = LEADERBOARD_OUTPUT_DIR / f"LEADERBOARD_{timestamp}.md"
+    results_file = LEADERBOARD_OUTPUT_DIR / f"leaderboard_results_{timestamp}.json"
+    
+    # Also create "latest" versions for easy access
+    latest_leaderboard = LEADERBOARD_OUTPUT_DIR / "LEADERBOARD_LATEST.md"
+    latest_results = LEADERBOARD_OUTPUT_DIR / "leaderboard_results_latest.json"
+    
+    # Save timestamped versions
     with open(leaderboard_file, 'w', encoding='utf-8') as f:
         f.write(markdown)
     
-    results_file = "leaderboard_results.json"
     with open(results_file, 'w') as f:
         json.dump({
             "results": results,
@@ -467,13 +634,37 @@ def main():
                 "generated_at": time.strftime("%Y-%m-%d %H:%M:%S UTC"),
                 "total_evaluations": len(results),
                 "models": [m["id"] for m in MODELS],
-                "reasoning_types": REASONING_TYPES
+                "reasoning_types": REASONING_TYPES,
+                "num_runs_per_evaluation": NUM_RUNS,
+                "seeds_used": BASE_SEEDS,
+                "parallel_execution": ENABLE_PARALLEL
+            }
+        }, f, indent=2)
+    
+    # Save latest versions
+    with open(latest_leaderboard, 'w', encoding='utf-8') as f:
+        f.write(markdown)
+    
+    with open(latest_results, 'w') as f:
+        json.dump({
+            "results": results,
+            "metadata": {
+                "generated_at": time.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "total_evaluations": len(results),
+                "models": [m["id"] for m in MODELS],
+                "reasoning_types": REASONING_TYPES,
+                "num_runs_per_evaluation": NUM_RUNS,
+                "seeds_used": BASE_SEEDS,
+                "parallel_execution": ENABLE_PARALLEL
             }
         }, f, indent=2)
     
     print(f"\n🏆 LEADERBOARD CREATED!")
     print(f"📄 Leaderboard: {leaderboard_file}")
+    print(f"📄 Latest: {latest_leaderboard}")
     print(f"💾 Raw results: {results_file}")
+    print(f"💾 Latest results: {latest_results}")
+    print(f"📁 All files organized in: {LEADERBOARD_OUTPUT_DIR}")
     
     # Show summary
     model_summary = {}

@@ -1,14 +1,14 @@
-"""Integration tests for the full KGRB pipeline."""
+"""Integration tests for the full ChaosGraphQA pipeline."""
 
 import pytest
-from kgrb.generators.multihop import MultiHopGenerator
-from kgrb.questions.templates import QuestionGenerator
-from kgrb.evaluators.ground_truth import GroundTruthVerifier
-from kgrb.models.question import QuestionType
+from cgqa.generators.multihop import MultiHopGenerator
+from cgqa.questions.templates import QuestionGenerator
+from cgqa.evaluators.ground_truth import GroundTruthVerifier
+from cgqa.models.question import QuestionType
 
 
 class TestFullPipeline:
-    """Test the complete KGRB pipeline."""
+    """Test the complete ChaosGraphQA pipeline."""
     
     def test_basic_pipeline(self):
         """Test the basic generate -> question -> verify pipeline."""

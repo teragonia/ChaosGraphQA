@@ -1,8 +1,8 @@
 """Tests for core data models."""
 
 import pytest
-from kgrb.models.graph import Entity, Relationship, KnowledgeGraph
-from kgrb.models.question import Question, QuestionType, Answer, AnswerType
+from cgqa.models.graph import Entity, Relationship, KnowledgeGraph
+from cgqa.models.question import Question, QuestionType, Answer, AnswerType
 
 
 class TestEntity:

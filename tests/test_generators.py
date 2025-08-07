@@ -1,8 +1,8 @@
 """Tests for graph generators."""
 
 import pytest
-from kgrb.generators.multihop import MultiHopGenerator
-from kgrb.models.question import QuestionType
+from cgqa.generators.multihop import MultiHopGenerator
+from cgqa.models.question import QuestionType
 
 
 class TestMultiHopGenerator:
