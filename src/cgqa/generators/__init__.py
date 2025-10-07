@@ -1,16 +1,16 @@
 """Graph generators for ChaosGraphQA."""
 
 from .base_generator import BaseGraphGenerator
-from .multihop import MultiHopGenerator
+from .conflicting import ConflictingGenerator
 from .hierarchical import HierarchicalGenerator
+from .multihop import MultiHopGenerator
 from .temporal import TemporalGenerator
 from .weighted import WeightedGenerator
-from .conflicting import ConflictingGenerator
 
 __all__ = [
     "BaseGraphGenerator",
     "MultiHopGenerator",
-    "HierarchicalGenerator", 
+    "HierarchicalGenerator",
     "TemporalGenerator",
     "WeightedGenerator",
     "ConflictingGenerator",

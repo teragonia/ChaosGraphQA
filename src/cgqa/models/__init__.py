@@ -1,12 +1,12 @@
 """Core data models for ChaosGraphQA."""
 
-from .graph import KnowledgeGraph, Entity, Relationship
-from .question import Question, QuestionType, Answer
+from .graph import Entity, KnowledgeGraph, Relationship
+from .question import Answer, Question, QuestionType
 
 __all__ = [
     "KnowledgeGraph",
     "Entity",
-    "Relationship", 
+    "Relationship",
     "Question",
     "QuestionType",
     "Answer",

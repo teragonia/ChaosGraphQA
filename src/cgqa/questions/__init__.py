@@ -1,10 +1,10 @@
 """Question generation system for ChaosGraphQA."""
 
-from .templates import QuestionGenerator, MultiHopTemplates
+from .templates import MultiHopTemplates, QuestionGenerator
 from .validators import AnswerValidator
 
 __all__ = [
     "QuestionGenerator",
-    "MultiHopTemplates", 
+    "MultiHopTemplates",
     "AnswerValidator",
 ]
