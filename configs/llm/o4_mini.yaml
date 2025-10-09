@@ -1,0 +1,11 @@
+# o4-mini configuration
+# Compact reasoning model
+# 200K context window
+# Training data cutoff: June 2024
+provider_name: "openai"
+model_name: "o4-mini"
+api_key: "${OPENAI_API_KEY}"  # Environment variable
+max_tokens: 1000
+timeout: 60
+
+# Note: o-series models don't support temperature, top_p, frequency_penalty, presence_penalty

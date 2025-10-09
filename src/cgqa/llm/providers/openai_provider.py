@@ -18,18 +18,23 @@ except ImportError:
 class OpenAIProvider(BaseLLMProvider):
     """OpenAI LLM provider using the official OpenAI API."""
 
+    # Verified working OpenAI models
     SUPPORTED_MODELS = [
+        # GPT-5 family (reasoning models, 400K context)
         "gpt-5",
+        "gpt-5-mini",
+        "gpt-5-nano",
+        # GPT-4 family (128K+ context)
+        "gpt-4.1",
         "gpt-4o",
-        "gpt-4o-2024-11-20",
-        "gpt-4.1-2025-04-14",
         "gpt-4o-mini",
         "gpt-4-turbo",
         "gpt-4",
+        # GPT-3.5 family
         "gpt-3.5-turbo",
-        "gpt-3.5-turbo-16k",
-        "o1-preview",
-        "o1-mini",
+        # o-series reasoning models (200K context)
+        "o3",
+        "o4-mini",
     ]
 
     def __init__(self, config: LLMConfig):
@@ -64,9 +69,11 @@ class OpenAIProvider(BaseLLMProvider):
     def _make_request(self, prompt: str, **kwargs) -> LLMResponse:
         """Make a request to OpenAI API using the responses interface."""
 
-        is_reasoning_model = self.config.model_name.startswith(
-            "o1"
-        ) or self.config.model_name.startswith("gpt-5")
+        is_reasoning_model = (
+            self.config.model_name.startswith("o3")
+            or self.config.model_name.startswith("o4")
+            or self.config.model_name.startswith("gpt-5")
+        )
         request_params = {
             "model": self.config.model_name,
             "input": [{"role": "user", "content": prompt}],
@@ -138,9 +145,11 @@ class OpenAIProvider(BaseLLMProvider):
     def get_model_info(self) -> Dict[str, Any]:
         """Get OpenAI model information."""
         info = super().get_model_info()
-        is_reasoning_model = self.config.model_name.startswith(
-            "o1"
-        ) or self.config.model_name.startswith("gpt-5")
+        is_reasoning_model = (
+            self.config.model_name.startswith("o3")
+            or self.config.model_name.startswith("o4")
+            or self.config.model_name.startswith("gpt-5")
+        )
         info.update(
             {
                 "provider_specific": {
@@ -159,29 +168,45 @@ class OpenAIProvider(BaseLLMProvider):
     def _get_context_window(self) -> int:
         """Get context window size for the model."""
         return {
+            # GPT-5 family - 400K context
             "gpt-5": 400000,
+            "gpt-5-mini": 400000,
+            "gpt-5-nano": 400000,
+            # GPT-4 family
             "gpt-4o": 128000,
+            "gpt-4o-2024-11-20": 128000,
+            "gpt-4.1-2025-04-14": 128000,
             "gpt-4o-mini": 128000,
             "gpt-4-turbo": 128000,
             "gpt-4": 8192,
+            # GPT-3.5 family
             "gpt-3.5-turbo": 4096,
             "gpt-3.5-turbo-16k": 16384,
-            "o1-preview": 128000,
-            "o1-mini": 128000,
+            # o-series reasoning models
+            "o3": 200000,
+            "o4-mini": 200000,
         }.get(self.config.model_name, 4096)
 
     def _get_training_cutoff(self) -> str:
         """Get training data cutoff for the model."""
         return {
-            "gpt-5": "September 30, 2024",
+            # GPT-5 family - September 2024 cutoff
+            "gpt-5": "September 2024",
+            "gpt-5-mini": "September 2024",
+            "gpt-5-nano": "September 2024",
+            # GPT-4 family
             "gpt-4o": "October 2023",
+            "gpt-4o-2024-11-20": "October 2023",
+            "gpt-4.1-2025-04-14": "April 2024",
             "gpt-4o-mini": "October 2023",
             "gpt-4-turbo": "April 2024",
             "gpt-4": "September 2021",
+            # GPT-3.5 family
             "gpt-3.5-turbo": "September 2021",
             "gpt-3.5-turbo-16k": "September 2021",
-            "o1-preview": "October 2023",
-            "o1-mini": "October 2023",
+            # o-series reasoning models - June 2024 cutoff
+            "o3": "June 2024",
+            "o4-mini": "June 2024",
         }.get(self.config.model_name, "Unknown")
 
     @classmethod

@@ -1,0 +1,16 @@
+# Claude Haiku 3.5 configuration
+# Fastest model with quick and accurate performance
+# 200K context window
+# Training data cutoff: July 2024
+provider_name: "anthropic"
+model_name: "claude-3-5-haiku-20241022"
+api_key: "${ANTHROPIC_API_KEY}"  # Environment variable
+temperature: 0.1
+max_tokens: 1000
+timeout: 30
+rate_limit_delay: 0.2
+
+# Anthropic-specific parameters
+extra_params:
+  top_p: 1.0
+  top_k: 40

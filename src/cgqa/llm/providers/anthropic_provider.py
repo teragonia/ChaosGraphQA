@@ -18,31 +18,43 @@ except ImportError:
 class AnthropicProvider(BaseLLMProvider):
     """Anthropic LLM provider using the official Anthropic API."""
 
-    # Common Anthropic models
+    # Verified working Claude models (200K context, 1M beta available for some)
     SUPPORTED_MODELS = [
+        # Claude 4.5 family - Latest generation
+        "claude-sonnet-4-5-20250929",
+        "claude-4.5-sonnet",  # Alias
+        # Claude 4 family
+        "claude-opus-4-1-20250805",
+        "claude-4.1-opus",  # Alias
         "claude-sonnet-4-20250514",
-        "claude-opus-4-20250514",
-        "claude-3-7-sonnet-20250219",
+        "claude-4-sonnet",  # Alias
+        # Claude 3.5 family
         "claude-3-5-sonnet-20241022",
-        "claude-3-5-sonnet-20240620",
+        "claude-3.5-sonnet",  # Alias
         "claude-3-5-haiku-20241022",
+        "claude-3.5-haiku",  # Alias
+        # Claude 3 family
         "claude-3-opus-20240229",
-        "claude-3-sonnet-20240229",
+        "claude-3-opus",  # Alias
         "claude-3-haiku-20240307",
-        # Aliases for convenience
-        "claude-4-sonnet",
-        "claude-3.5-sonnet",
-        "claude-3.5-haiku",
-        "claude-3-opus",
-        "claude-3-sonnet",
-        "claude-3-haiku",
+        "claude-3-haiku",  # Alias
     ]
 
     # Model name mappings for aliases
     MODEL_ALIASES = {
+        # Claude 4.5 aliases
+        "claude-sonnet-4.5": "claude-sonnet-4-5-20250929",
+        "claude-4.5-sonnet": "claude-sonnet-4-5-20250929",
+        # Claude 4.1 aliases
+        "claude-opus-4.1": "claude-opus-4-1-20250805",
+        "claude-4.1-opus": "claude-opus-4-1-20250805",
+        # Claude 4 aliases
+        "claude-sonnet-4": "claude-sonnet-4-20250514",
         "claude-4-sonnet": "claude-sonnet-4-20250514",
+        # Claude 3.5 aliases
         "claude-3.5-sonnet": "claude-3-5-sonnet-20241022",
         "claude-3.5-haiku": "claude-3-5-haiku-20241022",
+        # Claude 3 aliases
         "claude-3-opus": "claude-3-opus-20240229",
         "claude-3-sonnet": "claude-3-sonnet-20240229",
         "claude-3-haiku": "claude-3-haiku-20240307",
@@ -189,9 +201,16 @@ class AnthropicProvider(BaseLLMProvider):
     def _get_context_window(self) -> int:
         """Get context window size for the model."""
         context_windows = {
+            # Claude 4.5 family - 200K standard, 1M beta available
+            "claude-sonnet-4-5-20250929": 200000,
+            # Claude 4 family - 200K standard, 1M beta for Sonnet 4
+            "claude-opus-4-1-20250805": 200000,
+            "claude-sonnet-4-20250514": 200000,
+            # Claude 3.5 family
             "claude-3-5-sonnet-20241022": 200000,
             "claude-3-5-sonnet-20240620": 200000,
             "claude-3-5-haiku-20241022": 200000,
+            # Claude 3 family
             "claude-3-opus-20240229": 200000,
             "claude-3-sonnet-20240229": 200000,
             "claude-3-haiku-20240307": 200000,
@@ -201,27 +220,35 @@ class AnthropicProvider(BaseLLMProvider):
     def _get_training_cutoff(self) -> str:
         """Get training data cutoff for the model."""
         cutoffs = {
+            # Claude 4.5 family - Training data cutoff: July 2025, Knowledge cutoff: January 2025
+            "claude-sonnet-4-5-20250929": "July 2025",
+            # Claude 4 family - Training data cutoff: March 2025, Knowledge cutoff: January 2025
+            "claude-opus-4-1-20250805": "March 2025",
+            "claude-sonnet-4-20250514": "March 2025",
+            # Claude 3.5 family
             "claude-3-5-sonnet-20241022": "April 2024",
             "claude-3-5-sonnet-20240620": "April 2024",
             "claude-3-5-haiku-20241022": "July 2024",
+            # Claude 3 family
             "claude-3-opus-20240229": "August 2023",
             "claude-3-sonnet-20240229": "August 2023",
             "claude-3-haiku-20240307": "August 2023",
         }
-        return cutoffs.get(self.config.model_name, "August 2023")
+        return cutoffs.get(self.config.model_name, "Unknown")
 
     def format_question_prompt(
         self,
         question: str,
         context: Optional[str] = None,
         answer_type: Optional[str] = None,
+        question_type: Optional[str] = None,
     ) -> str:
         """Format a question into a prompt suitable for Claude.
 
         Claude works well with clear, structured prompts with format instructions.
         """
         # Use the base class implementation for structured prompting
-        return super().format_question_prompt(question, context, answer_type)
+        return super().format_question_prompt(question, context, answer_type, question_type)
 
     @classmethod
     def create_config(

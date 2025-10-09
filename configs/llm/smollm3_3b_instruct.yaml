@@ -1,0 +1,18 @@
+# SmolLM3-3B configuration
+# 3.08B parameter model with long context (128k tokens)
+# Multilingual: English, French, Spanish, German, Italian, Portuguese
+# Supports extended thinking mode and tool calling
+
+# Uses HuggingFace InferenceClient
+provider_name: "huggingface"
+model_name: "HuggingFaceTB/SmolLM3-3B"
+api_key: "${HF_TOKEN}"  # HuggingFace token environment variable
+temperature: 0.1
+max_tokens: 1000
+timeout: 60
+
+# HuggingFace-specific parameters
+extra_params:
+  inference_mode: "api"  # Options: "api" or "local"
+  top_p: 0.9
+  top_k: 50

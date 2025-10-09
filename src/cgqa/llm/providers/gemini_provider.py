@@ -17,17 +17,14 @@ except ImportError:
 class GeminiProvider(BaseLLMProvider):
     """Google Gemini LLM provider using the official Google AI API."""
 
-    # Common Gemini models
+    # Verified working Gemini models (1M input, 65K output)
     SUPPORTED_MODELS = [
-        "gemini-1.5-pro",
-        "gemini-1.5-pro-latest",
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-latest",
-        "gemini-1.0-pro",
-        "gemini-1.0-pro-latest",
-        # Experimental models
-        "gemini-exp-1114",
-        "gemini-exp-1121",
+        # Gemini 2.5 family - Latest generation (Jan 2025 cutoff)
+        "gemini-2.5-pro",         # Complex reasoning, long context
+        "gemini-2.5-flash",       # Best price-performance
+        "gemini-2.5-flash-lite",  # Cost-efficient, low latency
+        # Gemini 2.0 family (Jan 2025 cutoff)
+        "gemini-2.0-flash",       # Previous generation Flash
     ]
 
     def __init__(self, config: LLMConfig):
@@ -91,15 +88,23 @@ class GeminiProvider(BaseLLMProvider):
                 prompt, generation_config=generation_config
             )
 
-            # Extract response text
+            # Extract response text - handle both .text and .parts
             response_text = ""
-            if response.text:
-                response_text = response.text
-            elif response.parts:
-                # Sometimes response comes as parts
-                for part in response.parts:
-                    if hasattr(part, "text"):
-                        response_text += part.text
+            try:
+                # Try to access text directly
+                if hasattr(response, 'text') and response.text:
+                    response_text = response.text
+            except Exception:
+                # If direct text access fails, try parts
+                pass
+
+            # If still no text, try accessing parts from candidates
+            if not response_text and response.candidates:
+                for candidate in response.candidates:
+                    if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                        for part in candidate.content.parts:
+                            if hasattr(part, "text"):
+                                response_text += part.text
 
             # Handle usage data (if available)
             usage_metadata = getattr(response, "usage_metadata", None)
@@ -217,13 +222,23 @@ class GeminiProvider(BaseLLMProvider):
     def _get_context_window(self) -> int:
         """Get context window size for the model."""
         context_windows = {
-            "gemini-1.5-pro": 1048576,  # 1M tokens
+            # Gemini 2.5 family - 1M input tokens
+            "gemini-2.5-pro": 1048576,
+            "gemini-2.5-flash": 1048576,
+            "gemini-2.5-flash-lite": 1048576,
+            # Gemini 2.0 family - 1M input tokens
+            "gemini-2.0-flash": 1048576,
+            "gemini-2.0-flash-lite": 1048576,
+            # Gemini 1.5 family - 1M tokens
+            "gemini-1.5-pro": 1048576,
             "gemini-1.5-pro-latest": 1048576,
             "gemini-1.5-flash": 1048576,
             "gemini-1.5-flash-latest": 1048576,
+            # Gemini 1.0 family
             "gemini-1.0-pro": 30720,
             "gemini-1.0-pro-latest": 30720,
-            "gemini-exp-1114": 2097152,  # 2M tokens
+            # Experimental models - 2M tokens
+            "gemini-exp-1114": 2097152,
             "gemini-exp-1121": 2097152,
         }
         return context_windows.get(self.config.model_name, 30720)
@@ -231,29 +246,40 @@ class GeminiProvider(BaseLLMProvider):
     def _get_training_cutoff(self) -> str:
         """Get training data cutoff for the model."""
         cutoffs = {
+            # Gemini 2.5 family - Knowledge cutoff: January 2025
+            "gemini-2.5-pro": "January 2025",
+            "gemini-2.5-flash": "January 2025",
+            "gemini-2.5-flash-lite": "January 2025",
+            # Gemini 2.0 family - Knowledge cutoff: January 2025
+            "gemini-2.0-flash": "January 2025",
+            "gemini-2.0-flash-lite": "January 2025",
+            # Gemini 1.5 family
             "gemini-1.5-pro": "April 2024",
             "gemini-1.5-pro-latest": "April 2024",
             "gemini-1.5-flash": "April 2024",
             "gemini-1.5-flash-latest": "April 2024",
+            # Gemini 1.0 family
             "gemini-1.0-pro": "February 2024",
             "gemini-1.0-pro-latest": "February 2024",
+            # Experimental models
             "gemini-exp-1114": "November 2024",
             "gemini-exp-1121": "November 2024",
         }
-        return cutoffs.get(self.config.model_name, "February 2024")
+        return cutoffs.get(self.config.model_name, "Unknown")
 
     def format_question_prompt(
         self,
         question: str,
         context: Optional[str] = None,
         answer_type: Optional[str] = None,
+        question_type: Optional[str] = None,
     ) -> str:
         """Format a question into a prompt suitable for Gemini.
 
         Gemini works well with clear instructions and structured input.
         """
         # Use the base class implementation for structured prompting
-        return super().format_question_prompt(question, context, answer_type)
+        return super().format_question_prompt(question, context, answer_type, question_type)
 
     @classmethod
     def create_config(

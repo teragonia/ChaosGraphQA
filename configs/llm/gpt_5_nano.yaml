@@ -1,0 +1,17 @@
+# GPT-5 Nano configuration
+# Most lightweight variant for speed and efficiency
+# 400K context window
+# Training data cutoff: September 2024
+# Pricing: $0.05/1M input, $0.40/1M output tokens
+# Ideal for mobile, embedded, or latency-constrained deployments
+provider_name: "openai"
+model_name: "gpt-5-nano"
+api_key: "${OPENAI_API_KEY}"  # Environment variable
+temperature: 0.1
+max_tokens: 1000
+timeout: 60
+
+# GPT-5 Nano supports reasoning_effort and verbosity parameters
+extra_params:
+  # verbosity: "low"  # Options: low, medium, high
+  # reasoning_effort: "minimal"  # Options: minimal, medium, high

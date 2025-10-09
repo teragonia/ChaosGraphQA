@@ -1,0 +1,16 @@
+# GPT-5 Mini configuration
+# Smaller, faster version optimized for lower latency
+# 400K context window
+# Training data cutoff: September 2024
+# Pricing: $0.25/1M input, $2/1M output tokens
+provider_name: "openai"
+model_name: "gpt-5-mini"
+api_key: "${OPENAI_API_KEY}"  # Environment variable
+temperature: 0.1
+max_tokens: 1000
+timeout: 60
+
+# GPT-5 Mini supports reasoning_effort and verbosity parameters
+extra_params:
+  # verbosity: "medium"  # Options: low, medium, high
+  # reasoning_effort: "medium"  # Options: minimal, medium, high

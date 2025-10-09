@@ -8,11 +8,12 @@ from typing import Any, Dict, List, Optional
 from .base import BaseLLMProvider, LLMConfig, LLMResponse
 
 try:
-    import requests
+    from huggingface_hub import InferenceClient
 
-    REQUESTS_AVAILABLE = True
+    HF_HUB_AVAILABLE = True
 except ImportError:
-    REQUESTS_AVAILABLE = False
+    HF_HUB_AVAILABLE = False
+    InferenceClient = None
 
 try:
     import torch
@@ -26,43 +27,32 @@ except ImportError:
 class HuggingFaceProvider(BaseLLMProvider):
     """HuggingFace LLM provider supporting both API and local inference."""
 
-    # Popular open-source models available on HuggingFace
+    # Models verified to work with HuggingFace InferenceClient (hf-inference provider)
+    # Note: This list contains models tested and working. Other models from HuggingFace
+    # may work if they support the chat completions interface on hf-inference.
+    # For local inference, set inference_mode: "local" in config.
     SUPPORTED_MODELS = [
-        # Llama models
-        "meta-llama/Llama-2-7b-chat-hf",
-        "meta-llama/Llama-2-13b-chat-hf",
-        "meta-llama/Llama-2-70b-chat-hf",
-        "meta-llama/Meta-Llama-3-8B-Instruct",
-        "meta-llama/Meta-Llama-3-70B-Instruct",
-        # Mistral models
-        "mistralai/Mistral-7B-Instruct-v0.1",
-        "mistralai/Mistral-7B-Instruct-v0.2",
-        "mistralai/Mixtral-8x7B-Instruct-v0.1",
-        # Other popular models
-        "microsoft/DialoGPT-medium",
-        "microsoft/DialoGPT-large",
-        "EleutherAI/gpt-j-6b",
-        "EleutherAI/gpt-neox-20b",
-        "bigscience/bloom-7b1",
-        "google/flan-t5-large",
-        "google/flan-t5-xl",
-        # Coding models
-        "codellama/CodeLlama-7b-Instruct-hf",
-        "codellama/CodeLlama-13b-Instruct-hf",
-        # Smaller models for testing
-        "distilgpt2",
-        "gpt2",
-        "gpt2-medium",
+        # SmolLM models (128k context, multilingual, reasoning)
+        "HuggingFaceTB/SmolLM3-3B",
+        # Note: Most models require local inference mode or may not be available
+        # via the hf-inference provider. To use other models:
+        # 1. Try adding them here and test with: cgqa test-model --model huggingface/model-name
+        # 2. Or use inference_mode: "local" in your config for local transformers inference
     ]
 
     def __init__(self, config: LLMConfig):
-        if not REQUESTS_AVAILABLE:
-            raise ImportError(
-                "Requests package not installed. Install with: pip install requests"
-            )
+        # Ensure extra_params exists
+        if config.extra_params is None:
+            config.extra_params = {}
 
         # Determine inference mode: 'api' or 'local'
+        # Set this BEFORE calling super().__init__() so it's available in all methods
         self.inference_mode = config.extra_params.get("inference_mode", "api")
+
+        if self.inference_mode == "api" and not HF_HUB_AVAILABLE:
+            raise ImportError(
+                "huggingface_hub package not installed. Install with: pip install huggingface_hub"
+            )
 
         if self.inference_mode == "local" and not TRANSFORMERS_AVAILABLE:
             raise ImportError(
@@ -77,9 +67,7 @@ class HuggingFaceProvider(BaseLLMProvider):
                     "HUGGINGFACE_API_KEY"
                 )
 
-            if not config.api_base:
-                config.api_base = "https://api-inference.huggingface.co/models"
-
+        # Call parent init after setting inference_mode
         super().__init__(config)
 
     def _setup_client(self) -> None:
@@ -90,12 +78,11 @@ class HuggingFaceProvider(BaseLLMProvider):
             self._setup_local_client()
 
     def _setup_api_client(self) -> None:
-        """Setup API-based inference."""
-        self.api_url = f"{self.config.api_base}/{self.config.model_name}"
-        self.headers = {}
-
-        if self.config.api_key:
-            self.headers["Authorization"] = f"Bearer {self.config.api_key}"
+        """Setup API-based inference using InferenceClient."""
+        self.client = InferenceClient(
+            provider="hf-inference",
+            api_key=self.config.api_key,
+        )
 
     def _setup_local_client(self) -> None:
         """Setup local inference with transformers."""
@@ -139,53 +126,46 @@ class HuggingFaceProvider(BaseLLMProvider):
             return self._make_local_request(prompt, **kwargs)
 
     def _make_api_request(self, prompt: str, **kwargs) -> LLMResponse:
-        """Make an API request to HuggingFace Inference API."""
+        """Make an API request to HuggingFace Inference API using InferenceClient."""
         try:
-            # Prepare payload
-            payload = {
-                "inputs": prompt,
-                "parameters": {
-                    "max_new_tokens": kwargs.get("max_tokens", self.config.max_tokens),
-                    "temperature": kwargs.get("temperature", self.config.temperature),
-                    "return_full_text": False,
-                },
+            # Prepare request parameters for chat completions
+            request_params = {
+                "model": self.config.model_name,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
+                "temperature": kwargs.get("temperature", self.config.temperature),
             }
 
             # Add additional parameters
             for key, value in kwargs.items():
                 if key not in ["max_tokens", "temperature"] and not key.startswith("_"):
-                    if key in ["top_p", "top_k", "repetition_penalty", "do_sample"]:
-                        payload["parameters"][key] = value
+                    if key in ["top_p", "top_k", "frequency_penalty", "presence_penalty"]:
+                        request_params[key] = value
 
-            # Make request
-            response = requests.post(
-                self.api_url,
-                headers=self.headers,
-                json=payload,
-                timeout=self.config.timeout,
-            )
+            # Make request using chat completions
+            response = self.client.chat.completions.create(**request_params)
 
-            response.raise_for_status()
-            result = response.json()
-
-            # Handle different response formats
+            # Extract response text
             response_text = ""
-            if isinstance(result, list) and len(result) > 0:
-                if "generated_text" in result[0]:
-                    response_text = result[0]["generated_text"]
-                elif "text" in result[0]:
-                    response_text = result[0]["text"]
-            elif isinstance(result, dict):
-                if "generated_text" in result:
-                    response_text = result["generated_text"]
-                elif "text" in result:
-                    response_text = result["text"]
+            if response.choices and len(response.choices) > 0:
+                response_text = response.choices[0].message.content or ""
+
+            # Handle usage data if available
+            usage = getattr(response, "usage", None)
+            prompt_tokens = getattr(usage, "prompt_tokens", None) if usage else None
+            completion_tokens = (
+                getattr(usage, "completion_tokens", None) if usage else None
+            )
+            total_tokens = getattr(usage, "total_tokens", None) if usage else None
 
             return LLMResponse(
                 text=response_text,
                 model_name=self.config.model_name,
                 provider_name="huggingface",
-                raw_response=result,
+                request_id=getattr(response, "id", None),
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
             )
 
         except Exception as e:
@@ -270,7 +250,14 @@ class HuggingFaceProvider(BaseLLMProvider):
         """Validate HuggingFace-specific configuration."""
         errors = super().validate_config()
 
-        if self.inference_mode == "api" and not self.config.api_key:
+        # Get inference mode (might not be set if called from factory validation)
+        inference_mode = getattr(self, 'inference_mode', None)
+        if inference_mode is None and self.config.extra_params:
+            inference_mode = self.config.extra_params.get("inference_mode", "api")
+        elif inference_mode is None:
+            inference_mode = "api"
+
+        if inference_mode == "api" and not self.config.api_key:
             errors.append(
                 "api_key or HF_TOKEN environment variable is recommended for HuggingFace API access"
             )
@@ -278,13 +265,20 @@ class HuggingFaceProvider(BaseLLMProvider):
         if not self.config.model_name:
             errors.append("model_name is required")
 
-        # Note: We don't strictly validate model names since HF has thousands of models
+        # Note: We don't strictly validate model names since HF has thousands of models.
+        # Users can try any model - if it doesn't work with hf-inference, they can use local mode.
 
         return errors
 
     def get_model_info(self) -> Dict[str, Any]:
         """Get HuggingFace model information."""
         info = super().get_model_info()
+
+        # Add context window info
+        context_window = self._get_context_window()
+        if context_window:
+            info["context_window"] = context_window
+
         info.update(
             {
                 "provider_specific": {
@@ -292,6 +286,7 @@ class HuggingFaceProvider(BaseLLMProvider):
                     "supports_local_inference": TRANSFORMERS_AVAILABLE,
                     "supports_api_inference": True,
                     "hub_url": f"https://huggingface.co/{self.config.model_name}",
+                    "context_window": context_window,
                     "device": (
                         getattr(self, "device", "unknown")
                         if self.inference_mode == "local"
@@ -302,18 +297,27 @@ class HuggingFaceProvider(BaseLLMProvider):
         )
         return info
 
+    def _get_context_window(self) -> Optional[int]:
+        """Get context window size for the model."""
+        context_windows = {
+            "HuggingFaceTB/SmolLM3-3B": 128000,
+            "openai/gpt-oss-20b": 8192,  # Estimated
+        }
+        return context_windows.get(self.config.model_name)
+
     def format_question_prompt(
         self,
         question: str,
         context: Optional[str] = None,
         answer_type: Optional[str] = None,
+        question_type: Optional[str] = None,
     ) -> str:
         """Format a question into a prompt suitable for HuggingFace models.
 
         Many HF models work better with chat-style prompts, but we also need structured output.
         """
         # Get the structured prompt from base class
-        base_prompt = super().format_question_prompt(question, context, answer_type)
+        base_prompt = super().format_question_prompt(question, context, answer_type, question_type)
 
         # Check if model is a chat/instruct model
         is_chat_model = any(

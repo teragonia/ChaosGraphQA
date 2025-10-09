@@ -1,0 +1,23 @@
+# GPT-OSS-20B configuration (OpenAI open-source model)
+# 21B parameters (3.6B active)
+# Supports configurable reasoning levels and tool use
+# Apache 2.0 license - fully open-source
+
+provider_name: "huggingface"
+model_name: "openai/gpt-oss-20b"
+api_key: "${HF_TOKEN}"  # HuggingFace token environment variable
+temperature: 0.1
+max_tokens: 1000
+timeout: 60
+
+# HuggingFace-specific parameters
+extra_params:
+  inference_mode: "api"  # Options: "api" or "local"
+  top_p: 0.9
+  top_k: 50
+  repetition_penalty: 1.1
+
+# For local inference, set:
+# extra_params:
+#   inference_mode: "local"
+#   # Requires: pip install transformers torch

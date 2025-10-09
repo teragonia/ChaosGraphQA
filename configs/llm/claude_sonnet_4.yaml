@@ -1,0 +1,16 @@
+# Claude Sonnet 4 configuration
+# High-performance model
+# 200K context window (1M beta available)
+# Training data cutoff: March 2025, Knowledge cutoff: January 2025
+provider_name: "anthropic"
+model_name: "claude-sonnet-4-20250514"
+api_key: "${ANTHROPIC_API_KEY}"  # Environment variable
+temperature: 0.1
+max_tokens: 1000
+timeout: 30
+rate_limit_delay: 0.2
+
+# Anthropic-specific parameters
+extra_params:
+  top_p: 1.0
+  top_k: 40
