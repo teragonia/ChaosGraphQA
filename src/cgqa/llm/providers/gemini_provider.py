@@ -55,11 +55,23 @@ class GeminiProvider(BaseLLMProvider):
             "max_output_tokens": self.config.max_tokens,
         }
 
+        # Configure safety settings to be less restrictive
+        # This prevents false positives on technical/academic content
+        from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
+        self.safety_settings = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        }
+
         # Initialize the model
         try:
             self.model = genai.GenerativeModel(
                 model_name=self.config.model_name,
                 generation_config=self.generation_config,
+                safety_settings=self.safety_settings,
             )
         except Exception as e:
             raise ValueError(

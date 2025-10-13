@@ -541,7 +541,17 @@ class AnswerValidator:
             explanation = f"✓ Valid path intermediar{'ies' if len(valid_intermediaries) > 1 else 'y'}: {', '.join(valid_intermediaries)}"
 
             if invalid_intermediaries:
-                explanation += f". Invalid: {', '.join(invalid_intermediaries)}"
+                # Filter out junk/malformed entries (keep only short, entity-like names)
+                clean_invalid = [
+                    name for name in invalid_intermediaries
+                    if len(name) < 50 and '\n' not in name
+                ]
+                # Limit to first 3 to avoid cluttering explanation
+                if clean_invalid:
+                    invalid_display = clean_invalid[:3]
+                    if len(clean_invalid) > 3:
+                        invalid_display.append(f"... and {len(clean_invalid) - 3} more")
+                    explanation += f". Invalid: {', '.join(invalid_display)}"
         else:
             score = 0.0
             is_correct = False

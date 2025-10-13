@@ -32,6 +32,7 @@ src/cgqa/llm/providers/openai_provider.py
 src/cgqa/models/__init__.py
 src/cgqa/models/graph.py
 src/cgqa/models/question.py
+src/cgqa/models/relationship_semantics.py
 src/cgqa/questions/__init__.py
 src/cgqa/questions/templates.py
 src/cgqa/questions/validators.py

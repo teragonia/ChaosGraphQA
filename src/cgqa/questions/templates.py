@@ -226,8 +226,7 @@ class QuestionGenerator:
             answer_value = True  # Path exists
             explanation = f"Yes, there is a path from {start_entity.name} to {end_entity.name} in {chosen_path['length']} hops"
         elif template.answer_type == AnswerType.ENTITY_LIST:
-            # CRITICAL FIX: Find the actual shortest path for intermediate entities
-            # Don't just use metadata path, which might not be the shortest
+            # CRITICAL FIX: Find ALL shortest paths and collect ALL acceptable intermediate entities
             from ..evaluators.graph_algorithms import GraphAlgorithms
 
             graph_algorithms = GraphAlgorithms(kg)
@@ -240,17 +239,17 @@ class QuestionGenerator:
             if not shortest_paths:
                 return None
 
-            # Use the first shortest path (they're all the same length)
-            shortest_path = shortest_paths[0]
+            # Collect ALL unique intermediate entities from ALL shortest paths
+            all_intermediate_entities = set()
+            for path in shortest_paths:
+                for eid in path[1:-1]:  # Exclude start and end
+                    entity = kg.get_entity(eid)
+                    if entity:
+                        all_intermediate_entities.add(entity.name)
 
-            # Return intermediate entity names (not IDs)
-            intermediate_entities = []
-            for eid in shortest_path[1:-1]:
-                entity = kg.get_entity(eid)
-                if entity:
-                    intermediate_entities.append(entity.name)
-            answer_value = intermediate_entities
-            explanation = f"Intermediate entities on shortest path: {', '.join(intermediate_entities) if intermediate_entities else 'none'}"
+            # Convert to sorted list for consistency
+            answer_value = sorted(list(all_intermediate_entities))
+            explanation = f"All acceptable intermediate entities on shortest paths: {', '.join(answer_value) if answer_value else 'none'}"
         elif template.answer_type == AnswerType.NUMERIC:
             # CRITICAL FIX: For step counting questions, verify actual shortest path length
             # Don't just use metadata path, which might not be the shortest
@@ -1287,7 +1286,7 @@ class TemporalTemplates:
                 answer_type=AnswerType.NUMERIC,
             ),
             QuestionTemplate(
-                template="What is the last event in the temporal sequence starting with {first_event}?",
+                template="What is the last event in the longest causal/temporal chain starting with {first_event}?",
                 question_type=QuestionType.TEMPORAL,
                 complexity_level=1,
                 required_graph_features=["temporal_sequences"],

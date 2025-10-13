@@ -27,7 +27,7 @@ class LLMConfig(BaseModel):
         default=None, description="API key for authentication"
     )
     api_base: Optional[str] = Field(default=None, description="Custom API base URL")
-    max_tokens: int = Field(default=1000, description="Maximum tokens to generate")
+    max_tokens: int = Field(default=2000, description="Maximum tokens to generate")
     temperature: float = Field(
         default=0.1, ge=0.0, le=2.0, description="Sampling temperature"
     )
@@ -179,69 +179,127 @@ Question: {question}
     ) -> str:
         """Get formatting instructions based on answer type and question type."""
         instructions = {
-            "single_entity": """Please provide your answer in exactly this format:
+            "single_entity": """
+═══════════════════════════════════════════════════════════════
+CRITICAL: Your response MUST end with this EXACT format:
+═══════════════════════════════════════════════════════════════
+
 ANSWER: [Entity Name]
 
-Examples:
-ANSWER: Project 10
-ANSWER: Maintenance 4
-ANSWER: Launch 8
+Examples of CORRECT format:
+  ANSWER: Project 10
+  ANSWER: Maintenance 4
+  ANSWER: Launch 8
 
-Provide only the entity name after "ANSWER:" with no additional text or explanation.""",
-            "entity_list": """Please provide your answer in exactly this format:
+IMPORTANT:
+• Start your final line with "ANSWER:" (all caps, with colon)
+• Put only the entity name after "ANSWER:"
+• Do NOT add any text after your answer
+• You may explain your reasoning BEFORE the answer line""",
+            "entity_list": """
+═══════════════════════════════════════════════════════════════
+CRITICAL: Your response MUST end with this EXACT format:
+═══════════════════════════════════════════════════════════════
+
 ANSWER: [Entity1, Entity2, Entity3]
 
-Examples:
-ANSWER: [Project 10, Launch 8]
-ANSWER: [Planning 12, Review 6, Maintenance 4]
-ANSWER: []
+Examples of CORRECT format:
+  ANSWER: [Project 10, Launch 8]
+  ANSWER: [Planning 12, Review 6, Maintenance 4]
+  ANSWER: []
 
-If there are no entities, use empty brackets: []
-Separate multiple entities with commas inside the brackets.""",
-            "boolean": """Please provide your answer in exactly this format:
-ANSWER: [Yes/No]
+IMPORTANT:
+• Start your final line with "ANSWER:" (all caps, with colon)
+• Put entities inside square brackets: []
+• Separate entities with commas
+• Use empty brackets [] if there are no entities
+• Do NOT add any text after your answer
+• You may explain your reasoning BEFORE the answer line""",
+            "boolean": """
+═══════════════════════════════════════════════════════════════
+CRITICAL: Your response MUST end with this EXACT format:
+═══════════════════════════════════════════════════════════════
 
-Examples:
-ANSWER: Yes
-ANSWER: No
+ANSWER: [Yes or No]
 
-Provide only "Yes" or "No" after "ANSWER:" with no additional text.""",
-            "numeric": """Please provide your answer in exactly this format:
+Examples of CORRECT format:
+  ANSWER: Yes
+  ANSWER: No
+
+IMPORTANT:
+• Start your final line with "ANSWER:" (all caps, with colon)
+• Put only "Yes" or "No" after "ANSWER:"
+• Do NOT write "ANSWER: Yes, because..." or any elaboration
+• Do NOT add any text after your answer
+• You may explain your reasoning BEFORE the answer line""",
+            "numeric": """
+═══════════════════════════════════════════════════════════════
+CRITICAL: Your response MUST end with this EXACT format:
+═══════════════════════════════════════════════════════════════
+
 ANSWER: [Number]
 
-Examples:
-ANSWER: 3
-ANSWER: 7.5
-ANSWER: 0
+Examples of CORRECT format:
+  ANSWER: 3
+  ANSWER: 7.5
+  ANSWER: 0
 
-Provide only the number after "ANSWER:" with no additional text.""",
-            "path": """Please provide your answer in exactly this format:
+IMPORTANT:
+• Start your final line with "ANSWER:" (all caps, with colon)
+• Put only the number after "ANSWER:"
+• Do NOT write "ANSWER: The answer is 3" or "ANSWER: 3 steps"
+• Do NOT add any text after your answer
+• You may explain your reasoning BEFORE the answer line""",
+            "path": """
+═══════════════════════════════════════════════════════════════
+CRITICAL: Your response MUST end with this EXACT format:
+═══════════════════════════════════════════════════════════════
+
 ANSWER: [Entity1 → Entity2 → Entity3]
 
-Examples:
-ANSWER: [Project 10 → Launch 8 → Maintenance 4]
-ANSWER: [Deadline 7 → Planning 12]
+Examples of CORRECT format:
+  ANSWER: [Project 10 → Launch 8 → Maintenance 4]
+  ANSWER: [Deadline 7 → Planning 12]
 
-Use the arrow symbol (→) to separate entities in the path.
-IMPORTANT: Follow only the directional relationships as specified in the context.
-Each step in your path must have a direct relationship going FROM the previous entity TO the next entity.""",
-            "text": """Please provide your answer in exactly this format:
+IMPORTANT:
+• Start your final line with "ANSWER:" (all caps, with colon)
+• Put the path inside square brackets: []
+• Use arrow symbol → to separate entities
+• Follow only the directional relationships from the context
+• Do NOT add any text after your answer
+• You may explain your reasoning BEFORE the answer line""",
+            "text": """
+═══════════════════════════════════════════════════════════════
+CRITICAL: Your response MUST end with this EXACT format:
+═══════════════════════════════════════════════════════════════
+
 ANSWER: [Your text answer]
 
-Examples:
-ANSWER: bidirectional conflict
-ANSWER: inheritance conflict
-ANSWER: temporal inconsistency
+Examples of CORRECT format:
+  ANSWER: bidirectional conflict
+  ANSWER: inheritance conflict
+  ANSWER: temporal inconsistency
 
-Provide a clear, concise text answer after "ANSWER:" with no additional explanation.""",
+IMPORTANT:
+• Start your final line with "ANSWER:" (all caps, with colon)
+• Put your concise text answer after "ANSWER:"
+• Do NOT add any additional explanation after your answer
+• You may explain your reasoning BEFORE the answer line""",
         }
 
         base_instruction = instructions.get(
             answer_type,
-            """Please provide your answer in exactly this format:
+            """
+═══════════════════════════════════════════════════════════════
+CRITICAL: Your response MUST end with this EXACT format:
+═══════════════════════════════════════════════════════════════
+
 ANSWER: [Your answer here]
 
-Provide a clear, direct answer after "ANSWER:" based on the given context.""",
+IMPORTANT:
+• Start your final line with "ANSWER:" (all caps, with colon)
+• Do NOT add any text after your answer
+• You may explain your reasoning BEFORE the answer line""",
         )
 
         # Add conflict type information for conflicting questions with text answers
