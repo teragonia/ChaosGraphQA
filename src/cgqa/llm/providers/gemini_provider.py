@@ -20,11 +20,11 @@ class GeminiProvider(BaseLLMProvider):
     # Verified working Gemini models (1M input, 65K output)
     SUPPORTED_MODELS = [
         # Gemini 2.5 family - Latest generation (Jan 2025 cutoff)
-        "gemini-2.5-pro",         # Complex reasoning, long context
-        "gemini-2.5-flash",       # Best price-performance
+        "gemini-2.5-pro",  # Complex reasoning, long context
+        "gemini-2.5-flash",  # Best price-performance
         "gemini-2.5-flash-lite",  # Cost-efficient, low latency
         # Gemini 2.0 family (Jan 2025 cutoff)
-        "gemini-2.0-flash",       # Previous generation Flash
+        "gemini-2.0-flash",  # Previous generation Flash
     ]
 
     def __init__(self, config: LLMConfig):
@@ -104,7 +104,7 @@ class GeminiProvider(BaseLLMProvider):
             response_text = ""
             try:
                 # Try to access text directly
-                if hasattr(response, 'text') and response.text:
+                if hasattr(response, "text") and response.text:
                     response_text = response.text
             except Exception:
                 # If direct text access fails, try parts
@@ -113,7 +113,9 @@ class GeminiProvider(BaseLLMProvider):
             # If still no text, try accessing parts from candidates
             if not response_text and response.candidates:
                 for candidate in response.candidates:
-                    if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                    if hasattr(candidate, "content") and hasattr(
+                        candidate.content, "parts"
+                    ):
                         for part in candidate.content.parts:
                             if hasattr(part, "text"):
                                 response_text += part.text
@@ -291,7 +293,9 @@ class GeminiProvider(BaseLLMProvider):
         Gemini works well with clear instructions and structured input.
         """
         # Use the base class implementation for structured prompting
-        return super().format_question_prompt(question, context, answer_type, question_type)
+        return super().format_question_prompt(
+            question, context, answer_type, question_type
+        )
 
     @classmethod
     def create_config(

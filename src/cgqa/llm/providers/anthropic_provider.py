@@ -248,7 +248,9 @@ class AnthropicProvider(BaseLLMProvider):
         Claude works well with clear, structured prompts with format instructions.
         """
         # Use the base class implementation for structured prompting
-        return super().format_question_prompt(question, context, answer_type, question_type)
+        return super().format_question_prompt(
+            question, context, answer_type, question_type
+        )
 
     @classmethod
     def create_config(

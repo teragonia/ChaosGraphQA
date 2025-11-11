@@ -139,7 +139,12 @@ class HuggingFaceProvider(BaseLLMProvider):
             # Add additional parameters
             for key, value in kwargs.items():
                 if key not in ["max_tokens", "temperature"] and not key.startswith("_"):
-                    if key in ["top_p", "top_k", "frequency_penalty", "presence_penalty"]:
+                    if key in [
+                        "top_p",
+                        "top_k",
+                        "frequency_penalty",
+                        "presence_penalty",
+                    ]:
                         request_params[key] = value
 
             # Make request using chat completions
@@ -251,7 +256,7 @@ class HuggingFaceProvider(BaseLLMProvider):
         errors = super().validate_config()
 
         # Get inference mode (might not be set if called from factory validation)
-        inference_mode = getattr(self, 'inference_mode', None)
+        inference_mode = getattr(self, "inference_mode", None)
         if inference_mode is None and self.config.extra_params:
             inference_mode = self.config.extra_params.get("inference_mode", "api")
         elif inference_mode is None:
@@ -317,7 +322,9 @@ class HuggingFaceProvider(BaseLLMProvider):
         Many HF models work better with chat-style prompts, but we also need structured output.
         """
         # Get the structured prompt from base class
-        base_prompt = super().format_question_prompt(question, context, answer_type, question_type)
+        base_prompt = super().format_question_prompt(
+            question, context, answer_type, question_type
+        )
 
         # Check if model is a chat/instruct model
         is_chat_model = any(

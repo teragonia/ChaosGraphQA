@@ -543,8 +543,9 @@ class AnswerValidator:
             if invalid_intermediaries:
                 # Filter out junk/malformed entries (keep only short, entity-like names)
                 clean_invalid = [
-                    name for name in invalid_intermediaries
-                    if len(name) < 50 and '\n' not in name
+                    name
+                    for name in invalid_intermediaries
+                    if len(name) < 50 and "\n" not in name
                 ]
                 # Limit to first 3 to avoid cluttering explanation
                 if clean_invalid:
