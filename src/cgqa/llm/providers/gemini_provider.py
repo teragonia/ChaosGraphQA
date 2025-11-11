@@ -57,7 +57,7 @@ class GeminiProvider(BaseLLMProvider):
 
         # Configure safety settings to be less restrictive
         # This prevents false positives on technical/academic content
-        from google.generativeai.types import HarmCategory, HarmBlockThreshold
+        from google.generativeai.types import HarmBlockThreshold, HarmCategory
 
         self.safety_settings = {
             HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,

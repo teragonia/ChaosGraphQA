@@ -1,6 +1,7 @@
 """Tests for graph generators."""
 
 import pytest
+
 from cgqa.generators.multihop import MultiHopGenerator
 from cgqa.models.question import QuestionType
 

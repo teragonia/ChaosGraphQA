@@ -4,16 +4,16 @@ Tests multiple models across all reasoning types and complexity levels.
 Runs each configuration 3 times and calculates mean and standard deviation.
 """
 
+import json
 import os
+import statistics
 import subprocess
 import time
-import json
-import statistics
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
+from typing import Dict, List
 
 # Models to benchmark
 MODELS = [

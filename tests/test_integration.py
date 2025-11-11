@@ -1,10 +1,11 @@
 """Integration tests for the full ChaosGraphQA pipeline."""
 
 import pytest
-from cgqa.generators.multihop import MultiHopGenerator
-from cgqa.questions.templates import QuestionGenerator
+
 from cgqa.evaluators.ground_truth import GroundTruthVerifier
+from cgqa.generators.multihop import MultiHopGenerator
 from cgqa.models.question import QuestionType
+from cgqa.questions.templates import QuestionGenerator
 
 
 class TestFullPipeline:

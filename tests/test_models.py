@@ -1,8 +1,9 @@
 """Tests for core data models."""
 
 import pytest
-from cgqa.models.graph import Entity, Relationship, KnowledgeGraph
-from cgqa.models.question import Question, QuestionType, Answer, AnswerType
+
+from cgqa.models.graph import Entity, KnowledgeGraph, Relationship
+from cgqa.models.question import Answer, AnswerType, Question, QuestionType
 
 
 class TestEntity:
