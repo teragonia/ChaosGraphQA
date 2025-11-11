@@ -42,7 +42,7 @@ cgqa list-models
 
 # Evaluate with different LLM providers
 cgqa evaluate benchmark.json --model openai/gpt-4o-mini --output results.json
-cgqa evaluate benchmark.json --model anthropic/claude-3.5-sonnet --output results.json  
+cgqa evaluate benchmark.json --model anthropic/claude-3.5-sonnet --output results.json
 cgqa evaluate benchmark.json --model gemini/gemini-1.5-flash --output results.json
 cgqa evaluate benchmark.json --model huggingface/microsoft/DialoGPT-medium --output results.json
 
@@ -56,6 +56,12 @@ cgqa evaluate benchmark.json \
   --max-tokens 1500 \
   --batch-size 5 \
   --no-context
+
+# Organize and manage outputs
+cgqa init-structure          # Initialize organized directory structure
+cgqa list-files              # List all benchmarks and evaluations
+cgqa cleanup                 # Clean up old temporary files
+cgqa analyze results.json    # Analyze evaluation results
 ```
 
 ### Python API
@@ -129,10 +135,30 @@ rate_limit_delay: 0.1
 Set your API keys:
 ```bash
 export OPENAI_API_KEY="your-key-here"
-export ANTHROPIC_API_KEY="your-key-here" 
+export ANTHROPIC_API_KEY="your-key-here"
 export GOOGLE_API_KEY="your-key-here"
 export HF_TOKEN="your-token-here"
 ```
+
+### Output Directory Structure
+
+ChaosGraphQA automatically organizes all outputs into a structured directory:
+
+```
+cgqa_outputs/              # Auto-generated, organized file structure
+├── benchmarks/           # Generated benchmark files
+│   └── {reasoning_type}/
+│       └── complexity_{level}/
+├── evaluations/          # Evaluation results
+│   └── {benchmark_name}/
+│       └── {model_name}/
+├── analysis/             # Analysis outputs and reports
+├── models/              # Model-specific outputs
+├── logs/                # Application logs
+└── temp/                # Temporary files (auto-cleaned)
+```
+
+Use `cgqa init-structure` to initialize this structure, `cgqa list-files` to browse files, and `cgqa cleanup` to remove old temporary files.
 
 ## Current Status
 
@@ -157,37 +183,50 @@ export HF_TOKEN="your-token-here"
 - **Dynamic question generation**: 30+ question templates across all reasoning types
 - **Complexity scaling**: Automatic parameter adjustment across 4 difficulty levels
 - **Full CLI integration**: All generator types supported with comprehensive options
+- **Organized output management**: Auto-organized directory structure with cleanup utilities
 - **Robust error handling**: Validation, entity creation, and recovery mechanisms
 
 🚧 **Future Enhancements**:
-- Enhanced reporting and visualization dashboards  
-- Benchmark comparison and analysis tools
+- Enhanced visualization dashboards and interactive reports
+- Advanced statistical analysis and model comparison tools
 - Additional reasoning types (causal, logical, mathematical)
-- Performance optimization and caching
+- Performance optimization and result caching
 
 ## Architecture
 
 ```
 cgqa/
-├── models/                    # Core data structures
-│   ├── graph.py              # Entity, Relationship, KnowledgeGraph
-│   └── question.py           # Question, Answer, QuestionSet, Templates
-├── generators/                # Knowledge graph generators  
-│   ├── base_generator.py     # Abstract base class
-│   ├── multihop.py          # Multi-hop path reasoning
-│   ├── hierarchical.py      # Taxonomy and inheritance
-│   ├── temporal.py          # Time-based and causal chains
-│   ├── weighted.py          # Probabilistic relationships
-│   └── conflicting.py       # Contradiction detection
-├── questions/                 # Question generation system
-│   └── templates.py          # 30+ question templates across 5 reasoning types
-├── evaluators/               # Ground truth verification
-│   └── ground_truth.py      # Graph algorithm-based verification
-├── llm/                      # LLM integration and evaluation
-│   ├── providers/           # Multi-provider LLM support
-│   └── evaluation/          # Evaluation engine and metrics
-└── cli/                      # Command-line interface
-    └── main.py              # Full-featured CLI with Rich output
+├── models/                      # Core data structures
+│   ├── graph.py                # Entity, Relationship, KnowledgeGraph
+│   ├── question.py             # Question, Answer, QuestionSet, QuestionType
+│   └── relationship_semantics.py  # Relationship semantic constraints
+├── generators/                  # Knowledge graph generators
+│   ├── base_generator.py       # Abstract base class with complexity scaling
+│   ├── multihop.py            # Multi-hop path reasoning
+│   ├── hierarchical.py        # Taxonomy and inheritance
+│   ├── temporal.py            # Time-based and causal chains
+│   ├── weighted.py            # Probabilistic relationships
+│   └── conflicting.py         # Contradiction detection
+├── questions/                   # Question generation system
+│   ├── templates.py            # 30+ question templates across 5 reasoning types
+│   └── validators.py           # Answer validation utilities
+├── evaluators/                  # Ground truth verification
+│   ├── ground_truth.py         # Main verification engine
+│   └── graph_algorithms.py     # BFS/DFS, cycle detection, path finding
+├── llm/                        # LLM integration and evaluation
+│   ├── providers/             # Multi-provider LLM support
+│   │   ├── base.py            # Abstract base provider
+│   │   ├── openai_provider.py
+│   │   ├── anthropic_provider.py
+│   │   ├── gemini_provider.py
+│   │   └── huggingface_provider.py
+│   └── evaluation/            # Evaluation engine and metrics
+│       ├── llm_evaluator.py   # Main evaluation orchestrator
+│       └── provider_factory.py  # Provider instantiation
+├── utils/                      # Utility modules
+│   └── directory_manager.py   # Organized output directory management
+└── cli/                        # Command-line interface
+    └── main.py                # Full-featured CLI with Rich output
 ```
 
 ## Testing
@@ -296,6 +335,20 @@ Challenge LLMs to detect contradictions and reason about inconsistent data.
 - "Is there a contradiction in the relationship between Alice and Bob?"
 - "Are the entities {Marketing, Sales, Engineering} part of a consistent subgraph?"
 - "What type of conflict exists between the 'is_friend_of' and 'is_enemy_of' relationships?"
+
+## Leaderboard & Benchmark Results
+
+For comprehensive benchmark results across 12 state-of-the-art models, see [BENCHMARK_RESULTS.md](BENCHMARK_RESULTS.md).
+
+**Latest results (November 10, 2025)**:
+- 720 total evaluations (12 models × 5 reasoning types × 4 complexity levels × 3 runs)
+- Top performers: GPT-5 (79.0%), GPT-5-mini (75.0%), GPT-4.1 (71.8%)
+- Claude Sonnet 4.5 achieves 69.7% accuracy (4th overall)
+
+To run the full leaderboard benchmark:
+```bash
+python run_leaderboard_benchmark.py
+```
 
 ## Example Results
 
