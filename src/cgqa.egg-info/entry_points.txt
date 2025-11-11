@@ -1,2 +1,0 @@
-[console_scripts]
-cgqa = cgqa.cli.main:cli
