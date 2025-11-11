@@ -95,6 +95,8 @@
 
 ## 📁 Data Location
 
+Generated files from the experiment run will be found in:
+
 - **Full Results**: `results/{date}/leaderboard_summary_{number}.json`
 - **Per-Model Detailed Results**: `results/{date}/{model_name}/`
 - **Checkpoint Data**: `leaderboard_checkpoint.json` (removed on successful completion)
