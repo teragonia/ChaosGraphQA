@@ -68,7 +68,7 @@ cgqa analyze results.json    # Analyze evaluation results
 
 ```python
 from cgqa.generators import (
-    MultiHopGenerator, HierarchicalGenerator, TemporalGenerator, 
+    MultiHopGenerator, HierarchicalGenerator, TemporalGenerator,
     WeightedGenerator, ConflictingGenerator
 )
 from cgqa.questions import QuestionGenerator
@@ -77,7 +77,7 @@ from cgqa.llm.evaluation.llm_evaluator import LLMEvaluator
 
 # Generate different types of knowledge graphs
 multihop_gen = MultiHopGenerator(complexity_level=2, seed=42)
-hierarchical_gen = HierarchicalGenerator(complexity_level=3, seed=123) 
+hierarchical_gen = HierarchicalGenerator(complexity_level=3, seed=123)
 temporal_gen = TemporalGenerator(complexity_level=2, seed=456)
 weighted_gen = WeightedGenerator(complexity_level=2, seed=789)
 conflicting_gen = ConflictingGenerator(complexity_level=2, seed=101)
@@ -89,8 +89,8 @@ print(f"Generated graph: {len(kg.entities)} entities, {len(kg.relationships)} re
 # Generate questions
 question_gen = QuestionGenerator(seed=42)
 questions = question_gen.generate_questions(
-    kg, 
-    question_types=[QuestionType.HIERARCHICAL], 
+    kg,
+    question_types=[QuestionType.HIERARCHICAL],
     num_questions_per_type=5,
     complexity_levels=[2, 3]
 )
@@ -98,7 +98,7 @@ questions = question_gen.generate_questions(
 # Evaluate with multiple LLM providers
 models_to_test = [
     "openai/gpt-4o-mini",
-    "anthropic/claude-3.5-sonnet", 
+    "anthropic/claude-3.5-sonnet",
     "gemini/gemini-1.5-flash"
 ]
 
@@ -106,12 +106,12 @@ for model_name in models_to_test:
     print(f"\n=== Evaluating {model_name} ===")
     evaluator = LLMEvaluator.from_model_string(model_name)
     summary = evaluator.evaluate_questions(questions.questions, kg)
-    
+
     print(f"Accuracy: {summary.accuracy:.1%}")
     print(f"Average Score: {summary.average_score:.3f}")
     print(f"Tokens Used: {summary.total_tokens_used:,}")
     print(f"Response Time: {summary.evaluation_time:.1f}s")
-    
+
     # Save results
     evaluator.save_results(summary, f"results_{model_name.replace('/', '_')}.json")
 ```
@@ -266,7 +266,7 @@ Test LLMs' ability to traverse multi-step relationships and find complex connect
 **Capabilities:**
 - Path finding between distant entities (2-6 hops)
 - Shortest path computation with BFS verification
-- Intermediate entity identification along paths  
+- Intermediate entity identification along paths
 - Path existence verification with directed/undirected graphs
 - Relationship-specific path constraints
 
@@ -305,7 +305,7 @@ Test comprehension of time-based relationships, event sequences, and causality.
 - "What is the final outcome when Budget Approval triggers a causal chain?"
 - "How many steps are in the causal chain from Research to Product Launch?"
 
-### ⚖️ Weighted Reasoning  
+### ⚖️ Weighted Reasoning
 Assess handling of probabilistic information, confidence scores, and uncertainty.
 
 **Capabilities:**
@@ -347,7 +347,7 @@ For comprehensive benchmark results across 12 state-of-the-art models, see [BENC
 
 To run the full leaderboard benchmark:
 ```bash
-python run_leaderboard_benchmark.py
+cgqa_bm
 ```
 
 ## Example Results
@@ -364,7 +364,7 @@ Tokens Used: 4,251
 Performance: ✓ Strong path-finding abilities, occasionally misses intermediate steps
 ```
 
-### Hierarchical Reasoning (Complexity 3, 5 questions)  
+### Hierarchical Reasoning (Complexity 3, 5 questions)
 ```
 Model: openai/gpt-4o-mini
 Accuracy: 80.0%

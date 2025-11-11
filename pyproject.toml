@@ -7,7 +7,7 @@ name = "cgqa"
 version = "0.1.0"
 description = "ChaosGraphQA - A randomized benchmark for testing LLM reasoning capabilities"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "ChaosGraphQA Contributors"}
@@ -61,6 +61,7 @@ llm = [
 
 [project.scripts]
 cgqa = "cgqa.cli.main:cli"
+cgqa_bm = "cgqa.run_leaderboard_benchmark:main"
 
 [project.urls]
 Homepage = "https://github.com/your-org/cgqa"

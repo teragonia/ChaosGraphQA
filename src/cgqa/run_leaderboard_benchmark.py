@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Comprehensive benchmarking script for ChaosGraphQA leaderboard.
 Tests multiple models across all reasoning types and complexity levels.
@@ -317,7 +316,7 @@ def run_model_tasks(model: str, tasks: List[Dict], benchmark_files: Dict[str, st
 
     return results
 
-def main():
+def _main():
     """Run comprehensive benchmark suite with multiple runs in parallel."""
 
     print("=" * 80)
@@ -637,9 +636,10 @@ def main():
         Path(CHECKPOINT_FILE).unlink()
         print(f"\n🧹 Cleaned up checkpoint file")
 
-if __name__ == "__main__":
+
+def main():
     try:
-        main()
+        _main()
     except KeyboardInterrupt:
         print("\n\n⚠️  Interrupted by user")
         print(f"   Progress saved in checkpoint: {CHECKPOINT_FILE}")
