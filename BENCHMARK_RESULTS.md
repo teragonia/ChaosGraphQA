@@ -95,8 +95,8 @@
 
 ## 📁 Data Location
 
-- **Full Results**: `results/2025-11-10/leaderboard_summary_165232.json`
-- **Per-Model Detailed Results**: `results/2025-11-10/{model_name}/`
+- **Full Results**: `results/{date}/leaderboard_summary_{number}.json`
+- **Per-Model Detailed Results**: `results/{date}/{model_name}/`
 - **Checkpoint Data**: `leaderboard_checkpoint.json` (removed on successful completion)
 
 ---
