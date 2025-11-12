@@ -13,11 +13,13 @@ from rich.progress import track
 from rich.table import Table
 
 from ..evaluators.ground_truth import GroundTruthVerifier
+from ..generators import GeneratorType
 from ..generators.conflicting import ConflictingGenerator
 from ..generators.hierarchical import HierarchicalGenerator
 from ..generators.multihop import MultiHopGenerator
 from ..generators.temporal import TemporalGenerator
 from ..generators.weighted import WeightedGenerator
+from ..generators.base_generator import BaseGraphGenerator
 from ..llm.evaluation.llm_evaluator import LLMEvaluator
 from ..llm.evaluation.provider_factory import ProviderFactory
 from ..models.graph import KnowledgeGraph
@@ -30,7 +32,7 @@ console = Console()
 
 @click.group()
 @click.version_option()
-def cli():
+def cli() -> None:
     """ChaosGraphQA (CGQA)
 
     A comprehensive benchmark for testing reasoning capabilities of LLMs
@@ -83,11 +85,11 @@ def generate(
     output_dir: Optional[str],
     verify: bool,
     output_info: Optional[str],
-):
+) -> None:
     """Generate a benchmark dataset."""
 
     # Initialize directory manager
-    dir_manager = (
+    dir_manager: DirectoryManager = (
         DirectoryManager(output_dir) if output_dir else get_default_directory_manager()
     )
 
@@ -101,7 +103,7 @@ def generate(
     try:
         # Generate knowledge graph
         if generator_type == "multihop":
-            generator = MultiHopGenerator(complexity_level=complexity, seed=seed)
+            generator: GeneratorType = MultiHopGenerator(complexity_level=complexity, seed=seed)
         elif generator_type == "hierarchical":
             generator = HierarchicalGenerator(complexity_level=complexity, seed=seed)
         elif generator_type == "temporal":
@@ -269,7 +271,7 @@ def evaluate(
     """Evaluate a model on a benchmark dataset."""
 
     # Initialize directory manager
-    dir_manager = (
+    dir_manager: DirectoryManager = (
         DirectoryManager(output_dir) if output_dir else get_default_directory_manager()
     )
 
@@ -544,7 +546,7 @@ def info(benchmark_file: str):
 def list_files(output_dir: Optional[str]):
     """List organized benchmark and evaluation files."""
 
-    dir_manager = (
+    dir_manager: DirectoryManager = (
         DirectoryManager(output_dir) if output_dir else get_default_directory_manager()
     )
 
@@ -601,7 +603,7 @@ def list_files(output_dir: Optional[str]):
 def cleanup(max_age: int, output_dir: Optional[str], dry_run: bool):
     """Clean up old temporary files and organize outputs."""
 
-    dir_manager = (
+    dir_manager: DirectoryManager = (
         DirectoryManager(output_dir) if output_dir else get_default_directory_manager()
     )
 
@@ -664,7 +666,7 @@ def cleanup(max_age: int, output_dir: Optional[str], dry_run: bool):
 def init_structure(output_dir: Optional[str]):
     """Initialize organized directory structure."""
 
-    dir_manager = (
+    dir_manager: DirectoryManager = (
         DirectoryManager(output_dir) if output_dir else get_default_directory_manager()
     )
 

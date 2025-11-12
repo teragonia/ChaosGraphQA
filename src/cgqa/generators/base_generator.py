@@ -10,7 +10,7 @@ This module provides the abstract base class for all graph generators:
 
 import random
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypeAlias
 
 import networkx as nx
 
@@ -228,3 +228,6 @@ class BaseGraphGenerator(ABC):
             return False
 
         return True
+
+
+GeneratorType: TypeAlias = BaseGraphGenerator
