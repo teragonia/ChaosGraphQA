@@ -18,8 +18,8 @@ try:
     LLM_AVAILABLE = True
 except ImportError:
     LLM_AVAILABLE = False
-    LLMEvaluator = None
-    ProviderFactory = None
+    LLMEvaluator = None  # type: ignore
+    ProviderFactory = None  # type: ignore
 
 __all__ = [
     "KnowledgeGraph",
