@@ -14,16 +14,16 @@ from rich.table import Table
 
 from ..evaluators.ground_truth import GroundTruthVerifier
 from ..generators import GeneratorType
+from ..generators.base_generator import BaseGraphGenerator
 from ..generators.conflicting import ConflictingGenerator
 from ..generators.hierarchical import HierarchicalGenerator
 from ..generators.multihop import MultiHopGenerator
 from ..generators.temporal import TemporalGenerator
 from ..generators.weighted import WeightedGenerator
-from ..generators.base_generator import BaseGraphGenerator
 from ..llm.evaluation.llm_evaluator import LLMEvaluator
 from ..llm.evaluation.provider_factory import ProviderFactory
 from ..models.graph import KnowledgeGraph
-from ..models.question import QuestionType
+from ..models.question import QuestionSet, QuestionType
 from ..questions.templates import QuestionGenerator
 from ..utils.directory_manager import DirectoryManager, get_default_directory_manager
 
@@ -103,7 +103,9 @@ def generate(
     try:
         # Generate knowledge graph
         if generator_type == "multihop":
-            generator: GeneratorType = MultiHopGenerator(complexity_level=complexity, seed=seed)
+            generator: GeneratorType = MultiHopGenerator(
+                complexity_level=complexity, seed=seed
+            )
         elif generator_type == "hierarchical":
             generator = HierarchicalGenerator(complexity_level=complexity, seed=seed)
         elif generator_type == "temporal":
@@ -117,17 +119,17 @@ def generate(
             sys.exit(1)
 
         with console.status("[bold green]Generating knowledge graph..."):
-            kg = generator.generate()
+            kg: KnowledgeGraph = generator.generate()
 
         console.print(
             f"[green]✓[/green] Generated graph with {len(kg.entities)} entities and {len(kg.relationships)} relationships"
         )
 
         # Generate questions
-        question_gen = QuestionGenerator(seed=seed)
+        question_gen: QuestionGenerator = QuestionGenerator(seed=seed)
 
         # Map generator type to question type
-        question_type_mapping = {
+        question_type_mapping: dict[str, QuestionType] = {
             "multihop": QuestionType.MULTIHOP,
             "hierarchical": QuestionType.HIERARCHICAL,
             "temporal": QuestionType.TEMPORAL,
@@ -135,10 +137,10 @@ def generate(
             "conflicting": QuestionType.CONFLICTING,
         }
 
-        target_question_type = question_type_mapping[generator_type]
+        target_question_type: QuestionType = question_type_mapping[generator_type]
 
         with console.status("[bold green]Generating questions..."):
-            question_set = question_gen.generate_questions(
+            question_set: QuestionSet = question_gen.generate_questions(
                 kg,
                 question_types=[target_question_type],
                 num_questions_per_type=num_questions,
@@ -152,7 +154,7 @@ def generate(
         # Verify ground truth if requested
         if verify:
             with console.status("[bold green]Verifying ground truth..."):
-                verifier = GroundTruthVerifier(kg)
+                verifier: GroundTruthVerifier = GroundTruthVerifier(kg)
                 verification_results = verifier.verify_question_set(
                     question_set.questions
                 )
@@ -267,7 +269,7 @@ def evaluate(
     no_context: bool,
     batch_size: Optional[int],
     output_info: Optional[str],
-):
+) -> None:
     """Evaluate a model on a benchmark dataset."""
 
     # Initialize directory manager
@@ -441,7 +443,7 @@ def evaluate(
     default="table",
     help="Output format",
 )
-def analyze(results_file: str, format: str):
+def analyze(results_file: str, format: str) -> None:
     """Analyze evaluation results."""
 
     console.print(f"[bold blue]Analyzing results: {results_file}[/bold blue]")
@@ -460,7 +462,7 @@ def analyze(results_file: str, format: str):
         sys.exit(1)
 
 
-def _display_results_table(results_data):
+def _display_results_table(results_data: dict) -> None:
     """Display results in a table format."""
     table = Table(title="Evaluation Results")
 
@@ -478,7 +480,7 @@ def _display_results_table(results_data):
 
 @cli.command()
 @click.argument("benchmark_file", type=click.Path(exists=True))
-def info(benchmark_file: str):
+def info(benchmark_file: str) -> None:
     """Show information about a benchmark dataset."""
 
     try:
@@ -511,8 +513,8 @@ def info(benchmark_file: str):
         console.print(f"Total: {len(questions)}")
 
         # Question types breakdown
-        type_counts = {}
-        complexity_counts = {}
+        type_counts: dict = {}
+        complexity_counts: dict = {}
 
         for q in questions:
             q_type = q.get("question_type", "unknown")
@@ -543,7 +545,7 @@ def info(benchmark_file: str):
     default=None,
     help="Base output directory to list (default: ./cgqa_outputs)",
 )
-def list_files(output_dir: Optional[str]):
+def list_files(output_dir: Optional[str]) -> None:
     """List organized benchmark and evaluation files."""
 
     dir_manager: DirectoryManager = (
@@ -600,7 +602,7 @@ def list_files(output_dir: Optional[str]):
     is_flag=True,
     help="Show what would be cleaned up without actually deleting",
 )
-def cleanup(max_age: int, output_dir: Optional[str], dry_run: bool):
+def cleanup(max_age: int, output_dir: Optional[str], dry_run: bool) -> None:
     """Clean up old temporary files and organize outputs."""
 
     dir_manager: DirectoryManager = (
@@ -663,7 +665,7 @@ def cleanup(max_age: int, output_dir: Optional[str], dry_run: bool):
     default=None,
     help="Base output directory (default: ./cgqa_outputs)",
 )
-def init_structure(output_dir: Optional[str]):
+def init_structure(output_dir: Optional[str]) -> None:
     """Initialize organized directory structure."""
 
     dir_manager: DirectoryManager = (
@@ -691,7 +693,7 @@ def init_structure(output_dir: Optional[str]):
 
 
 @cli.command()
-def list_models():
+def list_models() -> None:
     """List available LLM models by provider."""
 
     console.print("[bold]Available LLM Models[/bold]\n")
@@ -731,7 +733,7 @@ def list_models():
     "--model", required=True, help="Model to test (e.g., 'openai/gpt-4o-mini')"
 )
 @click.option("--api-key", help="API key for the provider")
-def test_model(model: str, api_key: Optional[str]):
+def test_model(model: str, api_key: Optional[str]) -> None:
     """Test connection to an LLM provider."""
 
     console.print(f"[bold blue]Testing model: {model}[/bold blue]")
