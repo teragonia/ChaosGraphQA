@@ -308,7 +308,10 @@ class LLMEvaluator:
         return "\n".join(context_parts)
 
     def _format_weight_for_display(
-        self, weight: float, relation_type: str, properties: Dict[str, Any] = None
+        self,
+        weight: float,
+        relation_type: str,
+        properties: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Format weight/confidence score for display in context.
 
@@ -361,7 +364,7 @@ class LLMEvaluator:
         # Error statistics
         error_count = sum(1 for r in results if r.error is not None)
         error_rate = error_count / len(results) if results else 0.0
-        error_types = {}
+        error_types: dict = {}
         for result in results:
             if result.error_type:
                 error_types[result.error_type] = (
@@ -374,7 +377,7 @@ class LLMEvaluator:
 
         # Performance by question type
         by_question_type = {}
-        type_groups = {}
+        type_groups: dict = {}
         for result in results:
             q_type = result.question_type
             if q_type not in type_groups:
@@ -394,7 +397,7 @@ class LLMEvaluator:
 
         # Performance by complexity
         by_complexity = {}
-        complexity_groups = {}
+        complexity_groups: dict = {}
         for result in results:
             complexity = result.complexity_level
             if complexity not in complexity_groups:
@@ -528,8 +531,14 @@ class LLMEvaluator:
 
             except Exception as e:
                 # Unexpected error, create error response
+                # NOTE: LLMResponse is a dataclass with 4 mandatory fields. model_name and provider_name
+                # were missing in the code. Found by mypy
                 last_response = LLMResponse(
-                    text="", error=str(e), error_type="UnexpectedError"
+                    text="",
+                    model_name="error",
+                    provider_name="error",
+                    error=str(e),
+                    error_type="UnexpectedError",
                 )
 
                 if attempt == max_retries:
@@ -542,8 +551,14 @@ class LLMEvaluator:
                 time.sleep(wait_time)
 
         # All retries failed, return the last response
+        # NOTE: LLMResponse is a dataclass with 4 mandatory fields. model_name and provider_name
+        # were missing in the code. Found by mypy
         return last_response or LLMResponse(
-            text="", error="All retry attempts failed", error_type="MaxRetriesExceeded"
+            text="",
+            model_name="error",
+            provider_name="error",
+            error="All retry attempts failed",
+            error_type="MaxRetriesExceeded",
         )
 
     def _is_retryable_error(self, error_type: Optional[str]) -> bool:
@@ -571,7 +586,7 @@ class LLMEvaluator:
         return error_type in retryable_errors
 
     @classmethod
-    def from_model_string(cls, model_string: str, **kwargs) -> "LLMEvaluator":
+    def from_model_string(cls, model_string: str, **kwargs: Any) -> "LLMEvaluator":
         """Create evaluator from model string.
 
         Args:
