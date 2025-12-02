@@ -46,7 +46,7 @@ class ProviderFactory:
         self,
         model_identifier: str,
         config: Optional[Union[LLMConfig, Dict[str, Any]]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> BaseLLMProvider:
         """Create an LLM provider instance.
 
@@ -62,6 +62,7 @@ class ProviderFactory:
         Raises:
             ValueError: If provider or model is not supported
         """
+        provider_name: Optional[str]
         if "/" in model_identifier:
             provider_name, model_name = model_identifier.split("/", 1)
         else:
@@ -119,7 +120,7 @@ class ProviderFactory:
         return provider_class(llm_config)
 
     @classmethod
-    def create_from_string(self, model_string: str, **kwargs) -> BaseLLMProvider:
+    def create_from_string(self, model_string: str, **kwargs: Any) -> BaseLLMProvider:
         """Create provider from simple string specification.
 
         Args:
@@ -162,7 +163,7 @@ class ProviderFactory:
 
     @classmethod
     def create_config_for_provider(
-        self, provider_name: str, model_name: str, **kwargs
+        self, provider_name: str, model_name: str, **kwargs: Any
     ) -> LLMConfig:
         """Create a default configuration for a specific provider.
 
@@ -180,7 +181,8 @@ class ProviderFactory:
         provider_class = self.PROVIDERS[provider_name]
 
         if hasattr(provider_class, "create_config"):
-            return provider_class.create_config(model=model_name, **kwargs)
+            retval: LLMConfig = provider_class.create_config(model=model_name, **kwargs)
+            return retval
         else:
             return LLMConfig(
                 provider_name=provider_name, model_name=model_name, **kwargs

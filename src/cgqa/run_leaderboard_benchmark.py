@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 # Models to benchmark
 MODELS = [
@@ -54,7 +54,7 @@ CHECKPOINT_INTERVAL = 5  # Save checkpoint every N model completions
 CHECKPOINT_FILE = "leaderboard_checkpoint.json"  # Checkpoint filename
 
 
-def load_results(results_file: str) -> dict:
+def load_results(results_file: str) -> Optional[dict]:
     """Load evaluation results from JSON file."""
     try:
         with open(results_file, "r") as f:
@@ -76,8 +76,8 @@ def run_single_evaluation_with_benchmark(
     complexity: int,
     run_num: int,
     benchmark_file: str,
-    print_lock: Lock = None,
-) -> dict:
+    print_lock: Optional[Lock] = None,
+) -> Optional[dict]:
     """Run evaluation for a model using a pre-generated benchmark file.
 
     Args:
@@ -152,7 +152,7 @@ def run_single_evaluation_with_benchmark(
         return None
 
 
-def calculate_statistics(runs: List[dict]) -> dict:
+def calculate_statistics(runs: List[dict]) -> Optional[dict]:
     """Calculate mean and standard deviation from multiple runs."""
     if not runs or len(runs) == 0:
         return None
@@ -213,7 +213,7 @@ def save_checkpoint(
         print(f"⚠️  Warning: Failed to save checkpoint: {e}")
 
 
-def load_checkpoint() -> Dict:
+def load_checkpoint() -> Optional[Dict]:
     """Load checkpoint from previous interrupted run.
 
     Returns:
@@ -225,7 +225,7 @@ def load_checkpoint() -> Dict:
 
     try:
         with open(CHECKPOINT_FILE) as f:
-            checkpoint_data = json.load(f)
+            checkpoint_data: dict = json.load(f)
 
         # Validate checkpoint configuration matches current settings
         config = checkpoint_data.get("configuration", {})
@@ -262,7 +262,7 @@ def generate_shared_benchmark(
     run_num: int,
     num_questions: int,
     print_lock: Lock,
-) -> str:
+) -> Optional[str]:
     """Generate a shared benchmark file for a specific config.
 
     Returns:
@@ -314,7 +314,7 @@ def run_model_tasks(
     benchmark_files: Dict[str, str],
     completed_tasks: set,
     print_lock: Lock,
-    results_callback,
+    results_callback: Any,
 ) -> List[dict]:
     """Run all tasks for a single model sequentially.
 
@@ -380,7 +380,7 @@ def run_model_tasks(
     return results
 
 
-def _main():
+def _main() -> None:
     """Run comprehensive benchmark suite with multiple runs in parallel."""
 
     print("=" * 80)

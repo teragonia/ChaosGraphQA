@@ -78,12 +78,12 @@ class GeminiProvider(BaseLLMProvider):
                 f"Failed to initialize Gemini model '{self.config.model_name}': {e}"
             )
 
-    def _make_request(self, prompt: str, **kwargs) -> LLMResponse:
+    def _make_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Make a request to Gemini API."""
 
         try:
             # Update generation config with any overrides
-            generation_config = self.generation_config.copy()
+            generation_config: Any = self.generation_config.copy()
             if "max_tokens" in kwargs:
                 generation_config["max_output_tokens"] = kwargs["max_tokens"]
             if "temperature" in kwargs:
@@ -152,7 +152,7 @@ class GeminiProvider(BaseLLMProvider):
                 error_type=type(e).__name__,
             )
 
-    def _response_to_dict(self, response) -> Dict[str, Any]:
+    def _response_to_dict(self, response: Any) -> Dict[str, Any]:
         """Convert Gemini response to dictionary for raw_response field."""
         try:
             result = {
@@ -304,7 +304,7 @@ class GeminiProvider(BaseLLMProvider):
         api_key: Optional[str] = None,
         temperature: float = 0.1,
         max_tokens: int = 1000,
-        **kwargs,
+        **kwargs: Any,
     ) -> LLMConfig:
         """Create a configuration for Gemini provider.
 

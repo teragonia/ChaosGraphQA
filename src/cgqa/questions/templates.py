@@ -1037,8 +1037,8 @@ class QuestionGenerator:
                 }
 
                 # Count entities involved in consistent relationships with the named entities
-                answer_value = len(involved_entities)
-                explanation = f"{answer_value} entities are involved in consistent relationships within the subgraph"
+                len_answer_value = len(involved_entities)
+                explanation = f"{len_answer_value} entities are involved in consistent relationships within the subgraph"
 
             else:
                 # For boolean questions, check if the selected entities are actually connected

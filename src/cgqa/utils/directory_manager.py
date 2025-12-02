@@ -258,7 +258,7 @@ class DirectoryManager:
         Returns:
             Dictionary with structure statistics
         """
-        info = {
+        info: dict = {
             "base_directory": str(self.base_dir),
             "total_size_mb": 0,
             "directories": {},

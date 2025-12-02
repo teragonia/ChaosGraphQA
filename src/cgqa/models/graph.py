@@ -141,7 +141,7 @@ class KnowledgeGraph(BaseModel):
         Returns:
             NetworkX graph with entity/relationship data as node/edge attributes
         """
-        G = nx.DiGraph() if directed else nx.Graph()
+        G: Union[nx.DiGraph, nx.Graph] = nx.DiGraph() if directed else nx.Graph()
 
         for entity in self.entities.values():
             G.add_node(entity.id, **entity.model_dump())

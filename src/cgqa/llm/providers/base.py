@@ -74,7 +74,7 @@ class BaseLLMProvider(ABC):
         pass
 
     @abstractmethod
-    def _make_request(self, prompt: str, **kwargs) -> LLMResponse:
+    def _make_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Make a request to the LLM provider.
 
         Args:
@@ -86,7 +86,7 @@ class BaseLLMProvider(ABC):
         """
         pass
 
-    def generate(self, prompt: str, **kwargs) -> LLMResponse:
+    def generate(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Generate a response from the LLM.
 
         Args:
@@ -124,7 +124,7 @@ class BaseLLMProvider(ABC):
                 response_time=time.time() - start_time,
             )
 
-    def batch_generate(self, prompts: List[str], **kwargs) -> List[LLMResponse]:
+    def batch_generate(self, prompts: List[str], **kwargs: Any) -> List[LLMResponse]:
         """Generate responses for multiple prompts.
 
         Args:
