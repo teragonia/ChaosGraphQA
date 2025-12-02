@@ -101,3 +101,8 @@ strict_equality = true
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 addopts = "-v"
+
+[dependency-groups]
+dev = [
+    "types-networkx>=3.4.2.20250509",
+]

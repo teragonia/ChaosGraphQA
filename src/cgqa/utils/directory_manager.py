@@ -200,7 +200,7 @@ class DirectoryManager:
         Returns:
             Dictionary with benchmark organization
         """
-        benchmarks = {}
+        benchmarks: dict = {}
         benchmarks_dir = self.base_dir / "benchmarks"
 
         if not benchmarks_dir.exists():
@@ -231,7 +231,7 @@ class DirectoryManager:
         Returns:
             Dictionary with evaluation organization
         """
-        evaluations = {}
+        evaluations: dict = {}
         evaluations_dir = self.base_dir / "evaluations"
 
         if not evaluations_dir.exists():
