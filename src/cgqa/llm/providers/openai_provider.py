@@ -3,9 +3,6 @@
 import os
 from typing import Any, Dict, List, Optional
 
-import openai
-from openai import OpenAI
-
 from .base import BaseLLMProvider, LLMConfig, LLMResponse
 
 
@@ -32,6 +29,14 @@ class OpenAIProvider(BaseLLMProvider):
     ]
 
     def __init__(self, config: LLMConfig):
+        try:
+            import openai
+            from openai import OpenAI
+        except:
+            raise ImportError(
+                "OpenAI package not installed. Install with: pip install openai"
+            )
+
         if not config.api_key:
             config.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -83,7 +88,7 @@ class OpenAIProvider(BaseLLMProvider):
                     request_params[key] = value
 
         try:
-            response = self.client.responses.create(**request_params)  # type: ignore
+            response = self.client.responses.create(**request_params)
             response_text = response.output_text or ""
 
             return LLMResponse(

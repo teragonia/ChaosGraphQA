@@ -5,14 +5,6 @@ from typing import Any, Dict, List, Optional
 
 from .base import BaseLLMProvider, LLMConfig, LLMResponse
 
-try:
-    import google.generativeai as genai
-
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
-    genai = None
-
 
 class GeminiProvider(BaseLLMProvider):
     """Google Gemini LLM provider using the official Google AI API."""
@@ -28,7 +20,11 @@ class GeminiProvider(BaseLLMProvider):
     ]
 
     def __init__(self, config: LLMConfig):
-        if not GEMINI_AVAILABLE:
+
+        try:
+            import google
+            from google import generativeai
+        except:
             raise ImportError(
                 "Google AI package not installed. Install with: pip install google-generativeai"
             )
@@ -47,7 +43,7 @@ class GeminiProvider(BaseLLMProvider):
 
     def _setup_client(self) -> None:
         """Initialize the Gemini client."""
-        genai.configure(api_key=self.config.api_key)
+        generativeai.configure(api_key=self.config.api_key)
 
         # Configure generation parameters
         self.generation_config = {
@@ -68,9 +64,9 @@ class GeminiProvider(BaseLLMProvider):
 
         # Initialize the model
         try:
-            self.model = genai.GenerativeModel(
+            self.model = generativeai.GenerativeModel(
                 model_name=self.config.model_name,
-                generation_config=self.generation_config,
+                generation_config=self.generation_config,  # type: ignore
                 safety_settings=self.safety_settings,
             )
         except Exception as e:
