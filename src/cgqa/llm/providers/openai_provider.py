@@ -3,16 +3,10 @@
 import os
 from typing import Any, Dict, List, Optional
 
+import openai
+from openai import OpenAI
+
 from .base import BaseLLMProvider, LLMConfig, LLMResponse
-
-try:
-    import openai
-    from openai import OpenAI
-
-    OPENAI_AVAILABLE = True
-except ImportError:
-    OPENAI_AVAILABLE = False
-    OpenAI = None
 
 
 class OpenAIProvider(BaseLLMProvider):
@@ -38,11 +32,6 @@ class OpenAIProvider(BaseLLMProvider):
     ]
 
     def __init__(self, config: LLMConfig):
-        if not OPENAI_AVAILABLE:
-            raise ImportError(
-                "OpenAI package not installed. Install with: pip install openai"
-            )
-
         if not config.api_key:
             config.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -216,7 +205,7 @@ class OpenAIProvider(BaseLLMProvider):
         api_key: Optional[str] = None,
         temperature: float = 0.1,
         max_tokens: int = 1000,
-        **kwargs,
+        **kwargs: Any,
     ) -> LLMConfig:
         """Create a configuration for OpenAI provider.
 
