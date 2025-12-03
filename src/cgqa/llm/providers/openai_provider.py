@@ -53,9 +53,9 @@ class OpenAIProvider(BaseLLMProvider):
         if self.config.api_base:
             client_kwargs["base_url"] = self.config.api_base
 
-        self.client = OpenAI(**client_kwargs)
+        self.client = OpenAI(**client_kwargs)  # type: ignore
 
-    def _make_request(self, prompt: str, **kwargs) -> LLMResponse:
+    def _make_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Make a request to OpenAI API using the responses interface."""
 
         is_reasoning_model = (
@@ -83,7 +83,7 @@ class OpenAIProvider(BaseLLMProvider):
                     request_params[key] = value
 
         try:
-            response = self.client.responses.create(**request_params)
+            response = self.client.responses.create(**request_params)  # type: ignore
             response_text = response.output_text or ""
 
             return LLMResponse(
