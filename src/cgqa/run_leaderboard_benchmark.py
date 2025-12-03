@@ -528,7 +528,7 @@ def _main() -> None:
     )
 
     # Build task lists for each model
-    model_tasks = {model: [] for model in MODELS}
+    model_tasks: dict = {model: [] for model in MODELS}
     for config in configs_to_run:
         for model in MODELS:
             task = {
@@ -541,7 +541,7 @@ def _main() -> None:
                 model_tasks[model].append(task)
                 model_progress[model]["total"] += 1
 
-    def print_progress_table():
+    def print_progress_table() -> None:
         """Print a nice progress table showing all models."""
         with print_lock:
             completed = len(completed_tasks)
@@ -592,7 +592,7 @@ def _main() -> None:
             print("=" * 100)
 
     # Callback to handle completed tasks
-    def handle_result(result_data, task):
+    def handle_result(result_data: Any, task: Any) -> None:
         with results_lock:
             result = result_data["result"]
             model_key = task["model"].split("/")[-1]
@@ -748,7 +748,7 @@ def _main() -> None:
         print(f"\n🧹 Cleaned up checkpoint file")
 
 
-def main():
+def main() -> None:
     try:
         _main()
     except KeyboardInterrupt:
