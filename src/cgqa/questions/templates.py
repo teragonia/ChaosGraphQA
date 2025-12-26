@@ -220,7 +220,7 @@ class QuestionGenerator:
                 entity = kg.get_entity(eid)
                 if entity:
                     path_names.append(entity.name)
-            answer_value = " → ".join(path_names)
+            answer_value: Any = " → ".join(path_names)
             explanation = f"The path from {start_entity.name} to {end_entity.name} is: {answer_value}"
         elif template.answer_type == AnswerType.BOOLEAN:
             answer_value = True  # Path exists
@@ -341,7 +341,7 @@ class QuestionGenerator:
 
         # Create ground truth answer using VERIFIED path information
         if template.answer_type == AnswerType.BOOLEAN:
-            answer_value = actual_path_length > 0  # Path exists and has length > 0
+            answer_value: Any = actual_path_length > 0  # Path exists and has length > 0
             if answer_value:
                 explanation = f"Yes, {leaf_entity.name} connects to {root_entity.name} through {chosen_path['relation_type']} relationships"
             else:
@@ -350,10 +350,13 @@ class QuestionGenerator:
             # Build actual path from relationships
             actual_path_entities = self._get_actual_hierarchical_path(kg, chosen_path)
             if actual_path_entities:
-                path_names = [
-                    kg.get_entity(eid).name
+                entities = [
+                    kg.get_entity(eid)
                     for eid in actual_path_entities
                     if kg.get_entity(eid)
+                ]
+                path_names = [
+                    entity.name for entity in entities if entity is not None
                 ]
                 answer_value = " → ".join(path_names)
                 explanation = f"The path is: {answer_value}"
@@ -437,7 +440,7 @@ class QuestionGenerator:
                     # Build causal graph and find terminal nodes reachable from cause
                     import networkx as nx
 
-                    causal_graph = nx.DiGraph()
+                    causal_graph: nx.DiGraph = nx.DiGraph()
                     for rel in kg.relationships:
                         if rel.relation_type == "causes":
                             causal_graph.add_edge(rel.source, rel.target)
