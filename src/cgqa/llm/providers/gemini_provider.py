@@ -298,7 +298,7 @@ class GeminiProvider(BaseLLMProvider):
         """
         # Use the base class implementation for structured prompting
         return super().format_question_prompt(
-            question, context, answer_type, question_type
+            question, context, answer_type, question_type  # type: ignore
         )
 
     @classmethod

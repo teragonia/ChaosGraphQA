@@ -509,9 +509,9 @@ def _main() -> None:
             f"{config['reasoning_type']}_c{config['complexity']}_run{config['run_num']}"
         )
         benchmark_file = generate_shared_benchmark(
-            config["reasoning_type"],
-            config["complexity"],
-            config["run_num"],
+            config["reasoning_type"],  # type: ignore
+            config["complexity"],  # type: ignore
+            config["run_num"],  # type: ignore
             NUM_QUESTIONS,
             print_lock,
         )

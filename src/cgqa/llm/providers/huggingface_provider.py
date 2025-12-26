@@ -13,7 +13,6 @@ try:
     HF_HUB_AVAILABLE = True
 except ImportError:
     HF_HUB_AVAILABLE = False
-    InferenceClient = None
 
 try:
     import torch
@@ -42,12 +41,11 @@ class HuggingFaceProvider(BaseLLMProvider):
 
     def __init__(self, config: LLMConfig):
         # Ensure extra_params exists
-        if config.extra_params is None:
-            config.extra_params = {}
+        extra_params: dict = {} if config.extra_params is None else config.extra_params
 
         # Determine inference mode: 'api' or 'local'
         # Set this BEFORE calling super().__init__() so it's available in all methods
-        self.inference_mode = config.extra_params.get("inference_mode", "api")
+        self.inference_mode = extra_params.get("inference_mode", "api")
 
         if self.inference_mode == "api" and not HF_HUB_AVAILABLE:
             raise ImportError(
@@ -109,7 +107,7 @@ class HuggingFaceProvider(BaseLLMProvider):
 
             # Move to device if not using device_map
             if device == "cpu":
-                self.model = self.model.to(device)
+                self.model = self.model.to(device)  # type: ignore
 
             self.device = device
 
@@ -118,14 +116,14 @@ class HuggingFaceProvider(BaseLLMProvider):
                 f"Failed to load HuggingFace model '{self.config.model_name}': {e}"
             )
 
-    def _make_request(self, prompt: str, **kwargs) -> LLMResponse:
+    def _make_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Make a request to HuggingFace (API or local)."""
         if self.inference_mode == "api":
             return self._make_api_request(prompt, **kwargs)
         else:
             return self._make_local_request(prompt, **kwargs)
 
-    def _make_api_request(self, prompt: str, **kwargs) -> LLMResponse:
+    def _make_api_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Make an API request to HuggingFace Inference API using InferenceClient."""
         try:
             # Prepare request parameters for chat completions
@@ -182,7 +180,7 @@ class HuggingFaceProvider(BaseLLMProvider):
                 error_type=type(e).__name__,
             )
 
-    def _make_local_request(self, prompt: str, **kwargs) -> LLMResponse:
+    def _make_local_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Make a local inference request."""
         try:
             # Tokenize input
@@ -323,7 +321,7 @@ class HuggingFaceProvider(BaseLLMProvider):
         """
         # Get the structured prompt from base class
         base_prompt = super().format_question_prompt(
-            question, context, answer_type, question_type
+            question, context, answer_type, question_type  # type: ignore
         )
 
         # Check if model is a chat/instruct model
@@ -349,7 +347,7 @@ class HuggingFaceProvider(BaseLLMProvider):
         inference_mode: str = "api",
         temperature: float = 0.1,
         max_tokens: int = 1000,
-        **kwargs,
+        **kwargs: Any,
     ) -> LLMConfig:
         """Create a configuration for HuggingFace provider.
 

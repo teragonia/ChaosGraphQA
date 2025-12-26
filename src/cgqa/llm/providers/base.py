@@ -145,7 +145,7 @@ class BaseLLMProvider(ABC):
         self,
         question: str,
         context: Optional[str] = None,
-        answer_type: Optional[str] = None,
+        answer_type: str = "",
         question_type: Optional[str] = None,
     ) -> str:
         """Format a question into a prompt suitable for the LLM.
@@ -173,7 +173,7 @@ Question: {question}
 
     def _get_format_instructions(
         self,
-        answer_type: Optional[str],
+        answer_type: str,
         question_type: Optional[str] = None,
         question: Optional[str] = None,
     ) -> str:
