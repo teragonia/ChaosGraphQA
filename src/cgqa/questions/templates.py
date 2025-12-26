@@ -455,7 +455,7 @@ class QuestionGenerator:
 
                         if terminal_nodes:
                             # Pick the terminal node with the longest path from cause
-                            longest_path = []
+                            longest_path: list = []
                             longest_terminal = None
 
                             for terminal in terminal_nodes:
@@ -471,17 +471,20 @@ class QuestionGenerator:
 
                             if longest_terminal:
                                 terminal_entity = kg.get_entity(longest_terminal)
-                                answer_value = (
+                                answer_value: Any = (
                                     terminal_entity.name
                                     if terminal_entity
                                     else effect_entity.name
                                 )
 
                                 # Build explanation with the longest path
-                                terminal_chain_names = [
-                                    kg.get_entity(nid).name
+                                entities: list = [
+                                    kg.get_entity(nid)
                                     for nid in longest_path
                                     if kg.get_entity(nid)
+                                ]
+                                terminal_chain_names = [
+                                    entity.name for entity in entities if entity is not None
                                 ]
                                 explanation = (
                                     f"Causal chain: {' → '.join(terminal_chain_names)}"
@@ -533,7 +536,7 @@ class QuestionGenerator:
                     # Build a graph of temporal relationships (both "before" and "causes") and traverse to find the last event
                     import networkx as nx
 
-                    temporal_graph = nx.DiGraph()
+                    temporal_graph: nx.DiGraph = nx.DiGraph()
                     for rel in kg.relationships:
                         if rel.relation_type in ["before", "causes"]:
                             temporal_graph.add_edge(rel.source, rel.target)
@@ -607,7 +610,7 @@ class QuestionGenerator:
         import networkx as nx
 
         # Build a graph of only consistent relationships
-        G = nx.Graph()
+        G: nx.Graph = nx.Graph()
         for rel in kg.relationships:
             if rel.properties.get("consistent", True):
                 # Only include relationships between the entities we're checking
@@ -649,7 +652,7 @@ class QuestionGenerator:
         # - located_in: City located_in State (City -> State)
         # - part_of: Component part_of System (Component -> System)
         # - reports_to: Manager reports_to Director (Manager -> Director)
-        G = nx.DiGraph()
+        G: nx.DiGraph = nx.DiGraph()
         for rel in kg.relationships:
             if rel.relation_type == relation_type:
                 G.add_edge(rel.source, rel.target)
@@ -676,7 +679,7 @@ class QuestionGenerator:
 
         # Build directed graph from actual relationships
         # All hierarchical relationships point child -> parent (upward toward root)
-        G = nx.DiGraph()
+        G: nx.DiGraph = nx.DiGraph()
         for rel in kg.relationships:
             if rel.relation_type == relation_type:
                 G.add_edge(rel.source, rel.target)
@@ -684,7 +687,8 @@ class QuestionGenerator:
         # Get actual path
         if nx.has_path(G, start_entity, end_entity):
             try:
-                return nx.shortest_path(G, start_entity, end_entity)
+                retval: Optional[List[str]] = nx.shortest_path(G, start_entity, end_entity)
+                return retval
             except nx.NetworkXNoPath:
                 return None
         else:
@@ -702,7 +706,7 @@ class QuestionGenerator:
         # Build weighted graph from actual relationships respecting semantic directionality
         from ..models.relationship_semantics import RelationshipSemantics
 
-        G = nx.DiGraph()  # Use directed graph to respect semantic directionality
+        G: nx.DiGraph = nx.DiGraph()  # Use directed graph to respect semantic directionality
 
         # Add nodes
         for entity_id in kg.entities.keys():
@@ -791,7 +795,7 @@ class QuestionGenerator:
         from ..models.relationship_semantics import RelationshipSemantics
 
         # Build directed graph respecting semantic directionality (same as evaluation system)
-        G = nx.DiGraph()
+        G: nx.DiGraph = nx.DiGraph()
 
         # Add nodes
         for entity_id in kg.entities.keys():
