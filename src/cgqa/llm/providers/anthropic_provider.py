@@ -12,7 +12,6 @@ try:
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     ANTHROPIC_AVAILABLE = False
-    Anthropic = None
 
 
 class AnthropicProvider(BaseLLMProvider):
@@ -92,9 +91,9 @@ class AnthropicProvider(BaseLLMProvider):
         if self.config.api_base:
             client_kwargs["base_url"] = self.config.api_base
 
-        self.client = Anthropic(**client_kwargs)
+        self.client = Anthropic(**client_kwargs)  # type: ignore
 
-    def _make_request(self, prompt: str, **kwargs) -> LLMResponse:
+    def _make_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Make a request to Anthropic API."""
 
         # Prepare request parameters
@@ -259,7 +258,7 @@ class AnthropicProvider(BaseLLMProvider):
         api_key: Optional[str] = None,
         temperature: float = 0.1,
         max_tokens: int = 1000,
-        **kwargs,
+        **kwargs: Any,
     ) -> LLMConfig:
         """Create a configuration for Anthropic provider.
 

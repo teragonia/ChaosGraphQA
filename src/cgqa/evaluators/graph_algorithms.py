@@ -19,7 +19,7 @@ class GraphAlgorithms:
 
     def _build_semantic_directed_graph(self) -> nx.DiGraph:
         """Build a directed graph that respects semantic directionality of relationships."""
-        graph = nx.DiGraph()
+        graph: nx.DiGraph = nx.DiGraph()
 
         for entity_id, entity in self.kg.entities.items():
             graph.add_node(entity_id, **entity.properties)
@@ -55,7 +55,8 @@ class GraphAlgorithms:
     def find_shortest_path(self, start: str, end: str) -> Optional[List[str]]:
         """Find shortest path between two entities."""
         try:
-            return nx.shortest_path(self.nx_graph, start, end)
+            retval: Optional[List[str]] = nx.shortest_path(self.nx_graph, start, end)
+            return retval
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             return None
 
@@ -95,7 +96,8 @@ class GraphAlgorithms:
     def get_path_length(self, start: str, end: str) -> Optional[int]:
         """Get shortest path length between two entities."""
         try:
-            return nx.shortest_path_length(self.nx_graph, start, end)
+            retval: Optional[int] = nx.shortest_path_length(self.nx_graph, start, end)
+            return retval
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             return None
 
@@ -133,7 +135,7 @@ class GraphAlgorithms:
         forbidden_relations: Optional[Set[str]] = None,
     ) -> nx.DiGraph:
         """Create a filtered graph based on relationship constraints."""
-        filtered = nx.DiGraph()
+        filtered: nx.DiGraph = nx.DiGraph()
         filtered.add_nodes_from(self.nx_graph.nodes(data=True))
 
         for u, v, data in self.nx_graph.edges(data=True):

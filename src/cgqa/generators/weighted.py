@@ -167,7 +167,7 @@ class WeightedGenerator(BaseGraphGenerator):
         entity_names = self._generate_entity_names(num_entities, prefix="W")
 
         for i, name in enumerate(entity_names):
-            entity_config = self.rng.choice(entity_types_with_props)
+            entity_config: dict = self.rng.choice(entity_types_with_props)
 
             # Generate properties
             properties = {"generated": True, "complexity": self.complexity_level}
@@ -326,7 +326,7 @@ class WeightedGenerator(BaseGraphGenerator):
         paths = []
 
         # Create weighted networkx graph
-        G = nx.Graph()
+        G: nx.Graph = nx.Graph()
         for rel in kg.relationships:
             if rel.weight is not None:
                 # Use (1 - weight) as edge weight so shortest path finds highest confidence path
