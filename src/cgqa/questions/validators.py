@@ -516,12 +516,16 @@ class AnswerValidator:
                 continue
 
             # Check if there's a path: start -> intermediate -> end
-            path_to_intermediate = self._graph_algorithms.find_shortest_path(
-                start_id, intermediate_id
-            ) if self._graph_algorithms is not None else None
-            path_from_intermediate = self._graph_algorithms.find_shortest_path(
-                intermediate_id, end_id
-            ) if self._graph_algorithms is not None else None
+            path_to_intermediate = (
+                self._graph_algorithms.find_shortest_path(start_id, intermediate_id)
+                if self._graph_algorithms is not None
+                else None
+            )
+            path_from_intermediate = (
+                self._graph_algorithms.find_shortest_path(intermediate_id, end_id)
+                if self._graph_algorithms is not None
+                else None
+            )
 
             if (
                 path_to_intermediate
@@ -558,16 +562,20 @@ class AnswerValidator:
             is_correct = False
 
             # Show what valid intermediaries exist
-            all_valid_paths = self._graph_algorithms.find_all_shortest_paths(
-                start_id, end_id
-            ) if self._graph_algorithms is not None else None
+            all_valid_paths = (
+                self._graph_algorithms.find_all_shortest_paths(start_id, end_id)
+                if self._graph_algorithms is not None
+                else None
+            )
             if all_valid_paths:
                 valid_intermediary_names = set()
                 for path in all_valid_paths:
                     if len(path) == 3:  # 2-hop path
-                        intermediate_entity = self._knowledge_graph.entities.get(
-                            path[1]
-                        ) if self._knowledge_graph is not None else None
+                        intermediate_entity = (
+                            self._knowledge_graph.entities.get(path[1])
+                            if self._knowledge_graph is not None
+                            else None
+                        )
                         if intermediate_entity:
                             valid_intermediary_names.add(intermediate_entity.name)
 

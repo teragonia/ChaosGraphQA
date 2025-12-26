@@ -11,9 +11,9 @@ This module provides the abstract base class for all graph generators:
 import random
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
-from typing_extensions import TypeAlias
 
 import networkx as nx
+from typing_extensions import TypeAlias
 
 from ..models.graph import Entity, KnowledgeGraph, Relationship
 from ..models.question import QuestionType

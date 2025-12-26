@@ -355,9 +355,7 @@ class QuestionGenerator:
                     for eid in actual_path_entities
                     if kg.get_entity(eid)
                 ]
-                path_names = [
-                    entity.name for entity in entities if entity is not None
-                ]
+                path_names = [entity.name for entity in entities if entity is not None]
                 answer_value = " → ".join(path_names)
                 explanation = f"The path is: {answer_value}"
             else:
@@ -487,7 +485,9 @@ class QuestionGenerator:
                                     if kg.get_entity(nid)
                                 ]
                                 terminal_chain_names = [
-                                    entity.name for entity in entities if entity is not None
+                                    entity.name
+                                    for entity in entities
+                                    if entity is not None
                                 ]
                                 explanation = (
                                     f"Causal chain: {' → '.join(terminal_chain_names)}"
@@ -690,7 +690,9 @@ class QuestionGenerator:
         # Get actual path
         if nx.has_path(G, start_entity, end_entity):
             try:
-                retval: Optional[List[str]] = nx.shortest_path(G, start_entity, end_entity)
+                retval: Optional[List[str]] = nx.shortest_path(
+                    G, start_entity, end_entity
+                )
                 return retval
             except nx.NetworkXNoPath:
                 return None
@@ -709,7 +711,9 @@ class QuestionGenerator:
         # Build weighted graph from actual relationships respecting semantic directionality
         from ..models.relationship_semantics import RelationshipSemantics
 
-        G: nx.DiGraph = nx.DiGraph()  # Use directed graph to respect semantic directionality
+        G: nx.DiGraph = (
+            nx.DiGraph()
+        )  # Use directed graph to respect semantic directionality
 
         # Add nodes
         for entity_id in kg.entities.keys():

@@ -257,9 +257,7 @@ class GroundTruthVerifier:
             for eid in actual_intermediate
             if self.kg.get_entity(eid)
         ]
-        actual_names = [
-            entity.name for entity in entities if entity is not None
-        ]
+        actual_names = [entity.name for entity in entities if entity is not None]
 
         # Check if expected entities match actual intermediate entities
         expected_set = set(expected_entities)
@@ -436,9 +434,7 @@ class GroundTruthVerifier:
             for chain in relevant_chains:
                 effect_entity = self.kg.get_entity(chain["effect"])
                 if effect_entity and effect_entity.name == expected_name:
-                    entities: list = [
-                        self.kg.get_entity(eid) for eid in chain["chain"]
-                    ]
+                    entities: list = [self.kg.get_entity(eid) for eid in chain["chain"]]
                     return {
                         "is_valid": True,
                         "confidence": 1.0,
@@ -446,7 +442,7 @@ class GroundTruthVerifier:
                         "details": {
                             "expected_effect": expected_name,
                             "verified_chain": [
-                               entity.name for entity in entities if entity is not None
+                                entity.name for entity in entities if entity is not None
                             ],
                         },
                     }
