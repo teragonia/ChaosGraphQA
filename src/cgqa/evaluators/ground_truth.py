@@ -433,6 +433,9 @@ class GroundTruthVerifier:
             for chain in relevant_chains:
                 effect_entity = self.kg.get_entity(chain["effect"])
                 if effect_entity and effect_entity.name == expected_name:
+                    entities: list = [
+                        self.kg.get_entity(eid) for eid in chain["chain"]
+                    ]
                     return {
                         "is_valid": True,
                         "confidence": 1.0,
@@ -440,7 +443,7 @@ class GroundTruthVerifier:
                         "details": {
                             "expected_effect": expected_name,
                             "verified_chain": [
-                                self.kg.get_entity(eid).name for eid in chain["chain"]
+                               entity.name for entity in entities if entity is not None
                             ],
                         },
                     }

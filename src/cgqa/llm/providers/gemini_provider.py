@@ -43,6 +43,14 @@ class GeminiProvider(BaseLLMProvider):
 
     def _setup_client(self) -> None:
         """Initialize the Gemini client."""
+        try:
+            import google
+            from google import generativeai
+        except:
+            raise ImportError(
+                "Google AI package not installed. Install with: pip install google-generativeai"
+            )
+
         generativeai.configure(api_key=self.config.api_key)
 
         # Configure generation parameters
