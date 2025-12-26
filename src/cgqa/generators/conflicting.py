@@ -468,7 +468,7 @@ class ConflictingGenerator(BaseGraphGenerator):
         conflicts = []
 
         # Group relationships by source-target pair
-        rel_groups = {}
+        rel_groups: dict = {}
         for rel in kg.relationships:
             key = (rel.source, rel.target)
             if key not in rel_groups:
@@ -512,7 +512,7 @@ class ConflictingGenerator(BaseGraphGenerator):
 
         for relation_type in transitive_relations:
             # Build directed graph for this relation type
-            G = nx.DiGraph()
+            G: nx.DiGraph = nx.DiGraph()
             for rel in kg.relationships:
                 if rel.relation_type == relation_type:
                     G.add_edge(rel.source, rel.target)
@@ -552,7 +552,7 @@ class ConflictingGenerator(BaseGraphGenerator):
         ]
 
         # Build graph from consistent relationships
-        G = nx.Graph()
+        G: nx.Graph = nx.Graph()
         for rel in consistent_rels:
             G.add_edge(rel.source, rel.target)
 

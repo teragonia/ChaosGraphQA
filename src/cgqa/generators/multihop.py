@@ -220,7 +220,7 @@ class MultiHopGenerator(BaseGraphGenerator):
                     continue
 
         # Sort by path length and diversity
-        interesting_paths.sort(key=lambda x: (x["length"], len(set(x["relations"]))))
+        interesting_paths.sort(key=lambda x: (x["length"], len(set(x["relations"]))))  # type: ignore
 
         # Return top paths for question generation
         return interesting_paths[:20]
@@ -232,7 +232,8 @@ class MultiHopGenerator(BaseGraphGenerator):
         nx_graph = kg.to_networkx()
 
         try:
-            return nx.shortest_path(nx_graph, start_id, end_id)
+            retval: Optional[List[str]] = nx.shortest_path(nx_graph, start_id, end_id)
+            return retval
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             return None
 

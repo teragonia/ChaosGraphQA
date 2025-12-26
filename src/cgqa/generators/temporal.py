@@ -412,7 +412,7 @@ class TemporalGenerator(BaseGraphGenerator):
         chains = []
 
         # Build causal graph
-        causal_graph = nx.DiGraph()
+        causal_graph: nx.DiGraph = nx.DiGraph()
         for rel in kg.relationships:
             if rel.relation_type == "causes":
                 causal_graph.add_edge(rel.source, rel.target)

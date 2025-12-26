@@ -11,7 +11,7 @@ from ..models.question import Answer, AnswerType, Question
 class AnswerValidator:
     """Validates and scores LLM responses against ground truth answers."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._knowledge_graph: Optional[KnowledgeGraph] = None
         self._graph_algorithms: Optional[GraphAlgorithms] = None
 
@@ -94,7 +94,7 @@ class AnswerValidator:
         elif answer_type == AnswerType.TEXT:
             return self._parse_structured_text(answer_content)
         else:
-            return answer_content
+            return answer_content  # type: ignore
 
     def _parse_structured_boolean(self, answer_content: str) -> Optional[bool]:
         """Parse boolean from structured format."""
@@ -488,7 +488,7 @@ class AnswerValidator:
         if not match:
             # Fallback to original validation if pattern doesn't match
             return self._compare_entity_list(
-                response, question.ground_truth.value, strict
+                response, question.ground_truth.value, strict  # type: ignore
             )
 
         start_name = match.group(1)
