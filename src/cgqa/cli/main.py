@@ -220,7 +220,7 @@ def generate(
 @click.option(
     "--model",
     required=True,
-    help="Model to evaluate (e.g., 'openai/gpt-4o', 'anthropic/claude-3.5-sonnet', 'gemini/gemini-1.5-flash')",
+    help="Model to evaluate (e.g., 'openai/gpt-4o', 'anthropic/claude-3.7-sonnet', 'gemini/gemini-1.5-flash')",
 )
 @click.option(
     "--output",
@@ -240,7 +240,7 @@ def generate(
 @click.option(
     "--temperature", type=float, default=0.1, help="Sampling temperature (0.0-2.0)"
 )
-@click.option("--max-tokens", type=int, default=1000, help="Maximum tokens to generate")
+@click.option("--max-tokens", type=int, default=None, help="Maximum tokens to generate (default: use model's natural limit)")
 @click.option(
     "--no-context",
     is_flag=True,
@@ -306,11 +306,14 @@ def evaluate(
         # Create LLM evaluator
         with console.status("[bold green]Setting up LLM provider..."):
             provider_config = {
-                "api_key": api_key,
+                # "api_key": api_key,
                 "temperature": temperature,
-                "max_tokens": max_tokens,
             }
-
+            # Only include max_tokens if explicitly set
+            if max_tokens is not None:
+                provider_config["max_tokens"] = max_tokens
+            if api_key:
+                provider_config["api_key"] = api_key
             try:
                 evaluator = LLMEvaluator.from_model_string(model, **provider_config)
                 console.print(
@@ -327,7 +330,7 @@ def evaluate(
                 console.print(f"[red]Error setting up LLM provider: {str(e)}[/red]")
                 console.print("\n[bold]Available providers and examples:[/bold]")
                 console.print("  OpenAI: --model openai/gpt-4o-mini")
-                console.print("  Anthropic: --model anthropic/claude-3.5-sonnet")
+                console.print("  Anthropic: --model anthropic/claude-3.7-sonnet")
                 console.print("  Gemini: --model gemini/gemini-1.5-flash")
                 console.print("  HuggingFace: --model huggingface/distilgpt2")
                 console.print("\n[bold]Environment variables:[/bold]")
@@ -723,7 +726,7 @@ def list_models() -> None:
 
     console.print("[bold]Usage Examples:[/bold]")
     console.print("  cgqa evaluate benchmark.json --model openai/gpt-4o-mini")
-    console.print("  cgqa evaluate benchmark.json --model anthropic/claude-3.5-sonnet")
+    console.print("  cgqa evaluate benchmark.json --model anthropic/claude-3.7-sonnet")
     console.print("  cgqa evaluate benchmark.json --model gemini/gemini-1.5-flash")
     console.print("  cgqa evaluate benchmark.json --model huggingface/distilgpt2")
 

@@ -20,43 +20,47 @@ class AnthropicProvider(BaseLLMProvider):
     # Verified working Claude models (200K context, 1M beta available for some)
     SUPPORTED_MODELS = [
         # Claude 4.5 family - Latest generation
+        "claude-opus-4-5-20251101",
+        "claude-haiku-4-5-20251001",
         "claude-sonnet-4-5-20250929",
-        "claude-4.5-sonnet",  # Alias
         # Claude 4 family
         "claude-opus-4-1-20250805",
-        "claude-4.1-opus",  # Alias
+        "claude-opus-4-20250514",
         "claude-sonnet-4-20250514",
-        "claude-4-sonnet",  # Alias
+        # Claude 3.7 family
+        "claude-3-7-sonnet-20250219",
         # Claude 3.5 family
-        "claude-3-5-sonnet-20241022",
-        "claude-3.5-sonnet",  # Alias
         "claude-3-5-haiku-20241022",
-        "claude-3.5-haiku",  # Alias
         # Claude 3 family
-        "claude-3-opus-20240229",
-        "claude-3-opus",  # Alias
         "claude-3-haiku-20240307",
-        "claude-3-haiku",  # Alias
     ]
 
     # Model name mappings for aliases
     MODEL_ALIASES = {
         # Claude 4.5 aliases
-        "claude-sonnet-4.5": "claude-sonnet-4-5-20250929",
+        "claude-4.5-opus": "claude-opus-4-5-20251101",
+        "claude-opus-4.5": "claude-opus-4-5-20251101",
+        "claude-4.5-haiku": "claude-haiku-4-5-20251001",
+        "claude-haiku-4.5": "claude-haiku-4-5-20251001",
         "claude-4.5-sonnet": "claude-sonnet-4-5-20250929",
+        "claude-sonnet-4.5": "claude-sonnet-4-5-20250929",
         # Claude 4.1 aliases
-        "claude-opus-4.1": "claude-opus-4-1-20250805",
         "claude-4.1-opus": "claude-opus-4-1-20250805",
+        "claude-opus-4.1": "claude-opus-4-1-20250805",
         # Claude 4 aliases
-        "claude-sonnet-4": "claude-sonnet-4-20250514",
+        "claude-4-opus": "claude-opus-4-20250514",
+        "claude-opus-4": "claude-opus-4-20250514",
         "claude-4-sonnet": "claude-sonnet-4-20250514",
-        # Claude 3.5 aliases
-        "claude-3.5-sonnet": "claude-3-5-sonnet-20241022",
+        "claude-sonnet-4": "claude-sonnet-4-20250514",
+        # Claude 3.7 aliases
+        "claude-3.7-sonnet": "claude-3-7-sonnet-20250219",
+        "claude-sonnet-3.7": "claude-3-7-sonnet-20250219",
+        # Claude 3.5 aliases (map to 3.7 as it's the latest 3.x)
         "claude-3.5-haiku": "claude-3-5-haiku-20241022",
+        "claude-haiku-3.5": "claude-3-5-haiku-20241022",
         # Claude 3 aliases
-        "claude-3-opus": "claude-3-opus-20240229",
-        "claude-3-sonnet": "claude-3-sonnet-20240229",
         "claude-3-haiku": "claude-3-haiku-20240307",
+        "claude-haiku-3": "claude-3-haiku-20240307",
     }
 
     def __init__(self, config: LLMConfig):
@@ -155,8 +159,8 @@ class AnthropicProvider(BaseLLMProvider):
     def test_connection(self) -> bool:
         """Test connection to Anthropic API."""
         try:
-            # Make a minimal request
-            response = self.generate("Hello", max_tokens=1, temperature=0.1)
+            # Make a minimal request - don't specify max_tokens, let model use its default
+            response = self.generate("Hello", temperature=0.1)
             return response.error is None
         except Exception:
             return False
@@ -201,17 +205,18 @@ class AnthropicProvider(BaseLLMProvider):
         """Get context window size for the model."""
         context_windows = {
             # Claude 4.5 family - 200K standard, 1M beta available
+            "claude-opus-4-5-20251101": 200000,
+            "claude-haiku-4-5-20251001": 200000,
             "claude-sonnet-4-5-20250929": 200000,
-            # Claude 4 family - 200K standard, 1M beta for Sonnet 4
+            # Claude 4 family - 200K standard
             "claude-opus-4-1-20250805": 200000,
+            "claude-opus-4-20250514": 200000,
             "claude-sonnet-4-20250514": 200000,
+            # Claude 3.7 family
+            "claude-3-7-sonnet-20250219": 200000,
             # Claude 3.5 family
-            "claude-3-5-sonnet-20241022": 200000,
-            "claude-3-5-sonnet-20240620": 200000,
             "claude-3-5-haiku-20241022": 200000,
             # Claude 3 family
-            "claude-3-opus-20240229": 200000,
-            "claude-3-sonnet-20240229": 200000,
             "claude-3-haiku-20240307": 200000,
         }
         return context_windows.get(self.config.model_name, 200000)
@@ -219,18 +224,19 @@ class AnthropicProvider(BaseLLMProvider):
     def _get_training_cutoff(self) -> str:
         """Get training data cutoff for the model."""
         cutoffs = {
-            # Claude 4.5 family - Training data cutoff: July 2025, Knowledge cutoff: January 2025
+            # Claude 4.5 family
+            "claude-opus-4-5-20251101": "July 2025",
+            "claude-haiku-4-5-20251001": "July 2025",
             "claude-sonnet-4-5-20250929": "July 2025",
-            # Claude 4 family - Training data cutoff: March 2025, Knowledge cutoff: January 2025
+            # Claude 4 family
             "claude-opus-4-1-20250805": "March 2025",
+            "claude-opus-4-20250514": "March 2025",
             "claude-sonnet-4-20250514": "March 2025",
+            # Claude 3.7 family
+            "claude-3-7-sonnet-20250219": "January 2025",
             # Claude 3.5 family
-            "claude-3-5-sonnet-20241022": "April 2024",
-            "claude-3-5-sonnet-20240620": "April 2024",
             "claude-3-5-haiku-20241022": "July 2024",
             # Claude 3 family
-            "claude-3-opus-20240229": "August 2023",
-            "claude-3-sonnet-20240229": "August 2023",
             "claude-3-haiku-20240307": "August 2023",
         }
         return cutoffs.get(self.config.model_name, "Unknown")
@@ -254,10 +260,10 @@ class AnthropicProvider(BaseLLMProvider):
     @classmethod
     def create_config(
         cls,
-        model: str = "claude-3.5-sonnet",
+        model: str = "claude-3.7-sonnet",
         api_key: Optional[str] = None,
         temperature: float = 0.1,
-        max_tokens: int = 1000,
+        max_tokens: Optional[int] = None,
         **kwargs: Any,
     ) -> LLMConfig:
         """Create a configuration for Anthropic provider.

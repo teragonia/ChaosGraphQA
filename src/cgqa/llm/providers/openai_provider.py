@@ -5,6 +5,11 @@ from typing import Any, Dict, List, Optional
 
 from .base import BaseLLMProvider, LLMConfig, LLMResponse
 
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None  # type: ignore
+
 
 class OpenAIProvider(BaseLLMProvider):
     """OpenAI LLM provider using the official OpenAI API."""
@@ -13,6 +18,7 @@ class OpenAIProvider(BaseLLMProvider):
     SUPPORTED_MODELS = [
         # GPT-5 family (reasoning models, 400K context)
         "gpt-5",
+        "gpt-5.2",
         "gpt-5-mini",
         "gpt-5-nano",
         # GPT-4 family (128K+ context)
@@ -29,10 +35,7 @@ class OpenAIProvider(BaseLLMProvider):
     ]
 
     def __init__(self, config: LLMConfig):
-        try:
-            import openai
-            from openai import OpenAI
-        except:
+        if OpenAI is None:
             raise ImportError(
                 "OpenAI package not installed. Install with: pip install openai"
             )
@@ -73,6 +76,23 @@ class OpenAIProvider(BaseLLMProvider):
             "input": [{"role": "user", "content": prompt}],
         }
 
+        # Add reasoning parameter for reasoning models
+        if is_reasoning_model:
+            # Default: use "low" for most reasoning models
+            reasoning_effort = "low"
+
+            # gpt-5.2+ (gpt-5.1+) supports "none" for fastest responses
+            if self.config.model_name.startswith("gpt-5.2"):
+                reasoning_effort = "none"
+            # gpt-5-mini/nano specifically use "minimal" (not o3/o4-mini)
+            elif self.config.model_name in ["gpt-5-mini", "gpt-5-nano"]:
+                reasoning_effort = "minimal"
+            # Special case: gpt-5-pro only supports "high"
+            elif "gpt-5-pro" in self.config.model_name:
+                reasoning_effort = "high"
+
+            request_params["reasoning"] = {"effort": reasoning_effort}
+
         if not is_reasoning_model:
             request_params["temperature"] = kwargs.get(
                 "temperature", self.config.temperature
@@ -91,14 +111,24 @@ class OpenAIProvider(BaseLLMProvider):
             response = self.client.responses.create(**request_params)
             response_text = response.output_text or ""
 
+            # Extract token usage if available
+            prompt_tokens = None
+            completion_tokens = None
+            total_tokens = None
+
+            if hasattr(response, "usage") and response.usage:
+                total_tokens = getattr(response.usage, "total_tokens", None)
+                prompt_tokens = getattr(response.usage, "prompt_tokens", None)
+                completion_tokens = getattr(response.usage, "completion_tokens", None)
+
             return LLMResponse(
                 text=response_text,
                 model_name=self.config.model_name,
                 provider_name="openai",
                 request_id=getattr(response, "id", None),
-                prompt_tokens=None,  # responses API may not provide detailed token counts
-                completion_tokens=None,
-                total_tokens=None,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
                 raw_response=(
                     response.model_dump() if hasattr(response, "model_dump") else None
                 ),
@@ -116,7 +146,8 @@ class OpenAIProvider(BaseLLMProvider):
     def test_connection(self) -> bool:
         """Test connection to OpenAI API."""
         try:
-            response = self.generate("Hello", max_tokens=1, temperature=0.1)
+            # Make a minimal request - don't specify max_tokens, let model use its default
+            response = self.generate("Hello", temperature=0.1)
             return response.error is None
         except Exception:
             return False
@@ -164,6 +195,7 @@ class OpenAIProvider(BaseLLMProvider):
         return {
             # GPT-5 family - 400K context
             "gpt-5": 400000,
+            "gpt-5.2": 400000,
             "gpt-5-mini": 400000,
             "gpt-5-nano": 400000,
             # GPT-4 family
@@ -186,6 +218,7 @@ class OpenAIProvider(BaseLLMProvider):
         return {
             # GPT-5 family - September 2024 cutoff
             "gpt-5": "September 2024",
+            "gpt-5.2": "December 2025",
             "gpt-5-mini": "September 2024",
             "gpt-5-nano": "September 2024",
             # GPT-4 family
@@ -209,7 +242,7 @@ class OpenAIProvider(BaseLLMProvider):
         model: str = "gpt-4o-mini",
         api_key: Optional[str] = None,
         temperature: float = 0.1,
-        max_tokens: int = 1000,
+        max_tokens: Optional[int] = None,
         **kwargs: Any,
     ) -> LLMConfig:
         """Create a configuration for OpenAI provider.

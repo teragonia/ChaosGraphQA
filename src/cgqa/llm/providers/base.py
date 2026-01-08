@@ -27,7 +27,7 @@ class LLMConfig(BaseModel):
         default=None, description="API key for authentication"
     )
     api_base: Optional[str] = Field(default=None, description="Custom API base URL")
-    max_tokens: int = Field(default=2000, description="Maximum tokens to generate")
+    max_tokens: Optional[int] = Field(default=None, description="Maximum tokens to generate (None = use model default)")
     temperature: float = Field(
         default=0.1, ge=0.0, le=2.0, description="Sampling temperature"
     )
@@ -103,11 +103,14 @@ class BaseLLMProvider(ABC):
                 time.sleep(self.config.rate_limit_delay)
 
             request_params = {
-                "max_tokens": self.config.max_tokens,
                 "temperature": self.config.temperature,
                 **self.config.extra_params,
                 **kwargs,
             }
+
+            # Only include max_tokens if it's explicitly set (not None)
+            if self.config.max_tokens is not None:
+                request_params["max_tokens"] = self.config.max_tokens
 
             response = self._make_request(prompt, **request_params)
             response.response_time = time.time() - start_time
@@ -339,7 +342,8 @@ Note: The final outcome is the entity at the end of the longest causal chain. If
         if not self.config.model_name:
             errors.append("model_name is required")
 
-        if self.config.max_tokens <= 0:
+        # Only validate max_tokens if it's explicitly set (not None)
+        if self.config.max_tokens is not None and self.config.max_tokens <= 0:
             errors.append("max_tokens must be positive")
 
         if not (0.0 <= self.config.temperature <= 2.0):

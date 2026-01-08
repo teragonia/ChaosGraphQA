@@ -7,7 +7,7 @@ from .base import BaseLLMProvider, LLMConfig, LLMResponse
 
 
 class GeminiProvider(BaseLLMProvider):
-    """Google Gemini LLM provider using the official Google AI API."""
+    """Google Gemini LLM provider using the official Google Gen AI SDK."""
 
     # Verified working Gemini models (1M input, 65K output)
     SUPPORTED_MODELS = [
@@ -22,11 +22,10 @@ class GeminiProvider(BaseLLMProvider):
     def __init__(self, config: LLMConfig):
 
         try:
-            import google
-            from google import generativeai
-        except:
+            from google import genai
+        except ImportError:
             raise ImportError(
-                "Google AI package not installed. Install with: pip install google-generativeai"
+                "Google Gen AI package not installed. Install with: pip install google-genai"
             )
 
         # Set defaults for Gemini
@@ -44,87 +43,120 @@ class GeminiProvider(BaseLLMProvider):
     def _setup_client(self) -> None:
         """Initialize the Gemini client."""
         try:
-            import google
-            from google import generativeai
-        except:
+            from google import genai
+            from google.genai import types
+        except ImportError:
             raise ImportError(
-                "Google AI package not installed. Install with: pip install google-generativeai"
+                "Google Gen AI package not installed. Install with: pip install google-genai"
             )
 
-        generativeai.configure(api_key=self.config.api_key)
+        # Initialize the client with API key
+        self.client = genai.Client(api_key=self.config.api_key)
 
-        # Configure generation parameters
-        self.generation_config = {
-            "temperature": self.config.temperature,
-            "max_output_tokens": self.config.max_tokens,
-        }
+        # Configure generation parameters using new API
+        self.generation_config = types.GenerateContentConfig(
+            temperature=self.config.temperature,
+            max_output_tokens=self.config.max_tokens,
+        )
 
         # Configure safety settings to be less restrictive
         # This prevents false positives on technical/academic content
-        from google.generativeai.types import HarmBlockThreshold, HarmCategory
+        self.safety_settings = [
+            types.SafetySetting(
+                category='HARM_CATEGORY_HARASSMENT',
+                threshold='BLOCK_NONE'
+            ),
+            types.SafetySetting(
+                category='HARM_CATEGORY_HATE_SPEECH',
+                threshold='BLOCK_NONE'
+            ),
+            types.SafetySetting(
+                category='HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                threshold='BLOCK_NONE'
+            ),
+            types.SafetySetting(
+                category='HARM_CATEGORY_DANGEROUS_CONTENT',
+                threshold='BLOCK_NONE'
+            ),
+        ]
 
-        self.safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-        }
-
-        # Initialize the model
-        try:
-            self.model = generativeai.GenerativeModel(
-                model_name=self.config.model_name,
-                generation_config=self.generation_config,  # type: ignore
-                safety_settings=self.safety_settings,
-            )
-        except Exception as e:
-            raise ValueError(
-                f"Failed to initialize Gemini model '{self.config.model_name}': {e}"
-            )
+        # Store model name for use in requests
+        self.model_name = self.config.model_name
 
     def _make_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
-        """Make a request to Gemini API."""
+        """Make a request to Gemini API using new google.genai SDK."""
 
         try:
-            # Update generation config with any overrides
-            generation_config: Any = self.generation_config.copy()
+            from google.genai import types
+
+            # Create generation config with overrides
+            config_kwargs = {
+                "temperature": kwargs.get("temperature", self.config.temperature),
+                "safety_settings": self.safety_settings,
+            }
+
+            # Only set max_output_tokens if explicitly provided
+            # Check if max_tokens is in kwargs first, otherwise use config
             if "max_tokens" in kwargs:
-                generation_config["max_output_tokens"] = kwargs["max_tokens"]
-            if "temperature" in kwargs:
-                generation_config["temperature"] = kwargs["temperature"]
+                max_tokens_value = kwargs["max_tokens"]
+            else:
+                max_tokens_value = self.config.max_tokens
 
-            # Add additional generation parameters
-            for key, value in kwargs.items():
-                if key not in ["max_tokens", "temperature"] and not key.startswith("_"):
-                    if key in ["top_p", "top_k", "candidate_count", "stop_sequences"]:
-                        generation_config[key] = value
+            # Only add to config if not None (let API use default otherwise)
+            if max_tokens_value is not None:
+                config_kwargs["max_output_tokens"] = max_tokens_value
 
-            # Generate response
-            response = self.model.generate_content(
-                prompt, generation_config=generation_config
+            # Add additional generation parameters if provided
+            if "top_p" in kwargs:
+                config_kwargs["top_p"] = kwargs["top_p"]
+            if "top_k" in kwargs:
+                config_kwargs["top_k"] = kwargs["top_k"]
+            if "stop_sequences" in kwargs:
+                config_kwargs["stop_sequences"] = kwargs["stop_sequences"]
+
+            generation_config = types.GenerateContentConfig(**config_kwargs)
+
+            # Generate response using new API
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=generation_config,
             )
 
-            # Extract response text - handle both .text and .parts
+            # Extract response text with better error handling and debugging
             response_text = ""
+            extraction_error = None
+
             try:
-                # Try to access text directly
                 if hasattr(response, "text") and response.text:
                     response_text = response.text
-            except Exception:
-                # If direct text access fails, try parts
-                pass
+            except (AttributeError, ValueError, TypeError) as e:
+                # If direct text access fails, try candidates
+                extraction_error = f"text access failed: {e}"
 
-            # If still no text, try accessing parts from candidates
-            if not response_text and response.candidates:
-                for candidate in response.candidates:
-                    if hasattr(candidate, "content") and hasattr(
-                        candidate.content, "parts"
-                    ):
-                        for part in candidate.content.parts:
-                            if hasattr(part, "text"):
-                                response_text += part.text
+            # If still no text, try extracting from candidates
+            if not response_text:
+                try:
+                    if hasattr(response, "candidates") and response.candidates:
+                        for candidate in response.candidates:
+                            if hasattr(candidate, "content") and candidate.content:
+                                if hasattr(candidate.content, "parts") and candidate.content.parts:
+                                    for part in candidate.content.parts:
+                                        if hasattr(part, "text") and part.text:
+                                            response_text += part.text
+                except (AttributeError, TypeError) as e:
+                    if extraction_error:
+                        extraction_error += f" | candidates access failed: {e}"
+                    else:
+                        extraction_error = f"candidates access failed: {e}"
 
-            # Handle usage data (if available)
+            # If we still have no text but no explicit error, check response structure
+            if not response_text and not extraction_error:
+                # Try to understand why we got no text
+                response_str = str(response)[:200] if response else "None"
+                extraction_error = f"No text extracted from response: {response_str}"
+
+            # Handle usage metadata
             usage_metadata = getattr(response, "usage_metadata", None)
             prompt_tokens = None
             completion_tokens = None
@@ -136,6 +168,20 @@ class GeminiProvider(BaseLLMProvider):
                     usage_metadata, "candidates_token_count", None
                 )
                 total_tokens = getattr(usage_metadata, "total_token_count", None)
+
+            # If no text was extracted, include the error
+            if not response_text and extraction_error:
+                return LLMResponse(
+                    text="",
+                    model_name=self.config.model_name,
+                    provider_name="gemini",
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    total_tokens=total_tokens,
+                    raw_response=self._response_to_dict(response),
+                    error=extraction_error,
+                    error_type="ResponseExtractionError",
+                )
 
             return LLMResponse(
                 text=response_text,
@@ -188,8 +234,9 @@ class GeminiProvider(BaseLLMProvider):
     def test_connection(self) -> bool:
         """Test connection to Gemini API."""
         try:
-            # Make a minimal request
-            response = self.generate("Hello", max_tokens=1, temperature=0.1)
+            # Make a minimal request using new API
+            # Don't specify max_tokens - let model use its default
+            response = self.generate("Hello", temperature=0.1)
             return response.error is None
         except Exception:
             return False
@@ -304,10 +351,10 @@ class GeminiProvider(BaseLLMProvider):
     @classmethod
     def create_config(
         cls,
-        model: str = "gemini-1.5-flash",
+        model: str = "gemini-2.5-flash",
         api_key: Optional[str] = None,
         temperature: float = 0.1,
-        max_tokens: int = 1000,
+        max_tokens: Optional[int] = None,
         **kwargs: Any,
     ) -> LLMConfig:
         """Create a configuration for Gemini provider.

@@ -20,12 +20,11 @@ MODELS = [
     # Claude models
     "anthropic/claude-sonnet-4-5-20250929",
     "anthropic/claude-sonnet-4-20250514",
-    "anthropic/claude-3-5-sonnet-20241022",
+    "anthropic/claude-3-7-sonnet-20250219",
     "anthropic/claude-3-5-haiku-20241022",
     # OpenAI models
-    "openai/gpt-5",
+    "openai/gpt-5.2",
     "openai/gpt-5-mini",
-    "openai/gpt-4.1",
     "openai/gpt-4o",
     # Gemini models
     "gemini/gemini-2.5-pro",

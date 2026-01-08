@@ -42,16 +42,16 @@ cgqa list-models
 
 # Evaluate with different LLM providers
 cgqa evaluate benchmark.json --model openai/gpt-4o-mini --output results.json
-cgqa evaluate benchmark.json --model anthropic/claude-3.5-sonnet --output results.json
-cgqa evaluate benchmark.json --model gemini/gemini-1.5-flash --output results.json
-cgqa evaluate benchmark.json --model huggingface/microsoft/DialoGPT-medium --output results.json
+cgqa evaluate benchmark.json --model anthropic/claude-3.7-sonnet --output results.json
+cgqa evaluate benchmark.json --model gemini/gemini-2.5-flash --output results.json
+cgqa evaluate benchmark.json --model huggingface/HuggingFaceTB/SmolLM3-3B --output results.json
 
 # Test LLM connection
-cgqa test-model --model anthropic/claude-3.5-sonnet
+cgqa test-model --model anthropic/claude-3.7-sonnet
 
 # Advanced evaluation options
 cgqa evaluate benchmark.json \
-  --model anthropic/claude-3.5-sonnet \
+  --model anthropic/claude-4.5-sonnet \
   --temperature 0.1 \
   --max-tokens 1500 \
   --batch-size 5 \
@@ -98,8 +98,8 @@ questions = question_gen.generate_questions(
 # Evaluate with multiple LLM providers
 models_to_test = [
     "openai/gpt-4o-mini",
-    "anthropic/claude-3.5-sonnet",
-    "gemini/gemini-1.5-flash"
+    "anthropic/claude-3.7-sonnet",
+    "gemini/gemini-2.5-flash"
 ]
 
 for model_name in models_to_test:
@@ -139,6 +139,31 @@ export ANTHROPIC_API_KEY="your-key-here"
 export GOOGLE_API_KEY="your-key-here"
 export HF_TOKEN="your-token-here"
 ```
+
+### Supported Models
+
+ChaosGraphQA supports multiple LLM providers with the latest models:
+
+**OpenAI**:
+- GPT-5 family: `gpt-5`, `gpt-5-mini`, `gpt-5-nano` (400K context)
+- GPT-4 family: `gpt-4.1`, `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`
+- o-series: `o3`, `o4-mini` (reasoning models, 200K context)
+
+**Anthropic Claude**:
+- Claude 4.5: `claude-4.5-opus`, `claude-4.5-sonnet`, `claude-4.5-haiku`
+- Claude 4: `claude-4.1-opus`, `claude-4-opus`, `claude-4-sonnet`
+- Claude 3.7: `claude-3.7-sonnet` (latest 3.x model)
+- Claude 3.5: `claude-3.5-haiku`
+- Claude 3: `claude-3-haiku`
+
+**Google Gemini**:
+- Gemini 2.5: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.5-flash-lite` (1M context)
+- Gemini 2.0: `gemini-2.0-flash`
+
+**HuggingFace**:
+- Any HuggingFace model (e.g., `HuggingFaceTB/SmolLM3-3B`, `distilgpt2`)
+
+Use `cgqa list-models` to see all available models and check provider availability.
 
 ### Output Directory Structure
 
@@ -356,7 +381,7 @@ Here's a sample evaluation showing how different LLMs perform across reasoning t
 
 ### Multi-hop Reasoning (Complexity 2, 5 questions)
 ```
-Model: anthropic/claude-3.5-sonnet
+Model: anthropic/claude-3.7-sonnet
 Accuracy: 60.0%
 Average Score: 0.620
 Total Time: 23.5s
@@ -376,7 +401,7 @@ Performance: ✓ Excellent taxonomy understanding, handles inheritance well
 
 ### Conflicting Information (Complexity 2, 5 questions)
 ```
-Model: gemini/gemini-1.5-flash
+Model: gemini/gemini-2.5-flash
 Accuracy: 40.0%
 Average Score: 0.420
 Total Time: 15.8s

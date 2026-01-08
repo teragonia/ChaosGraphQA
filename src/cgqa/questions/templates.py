@@ -1369,6 +1369,28 @@ class ConflictingTemplates:
     def get_templates(self) -> List[QuestionTemplate]:
         """Get all conflicting information question templates."""
         return [
+            # Complexity Level 1 templates (CRITICAL FIX: Added to support c1 benchmarks)
+            QuestionTemplate(
+                template="Does {source_entity} have any conflicting information about {target_entity}?",
+                question_type=QuestionType.CONFLICTING,
+                complexity_level=1,
+                required_graph_features=["detected_conflicts"],
+                variables={
+                    "source_entity": "Source entity",
+                    "target_entity": "Target entity",
+                    "query_type": "detection",
+                },
+                answer_type=AnswerType.BOOLEAN,
+            ),
+            QuestionTemplate(
+                template="Are {entity_set} consistently related?",
+                question_type=QuestionType.CONFLICTING,
+                complexity_level=1,
+                required_graph_features=["consistent_subgraphs"],
+                variables={"entity_set": "Entity set", "query_type": "consistency"},
+                answer_type=AnswerType.BOOLEAN,
+            ),
+            # Complexity Level 2 templates
             QuestionTemplate(
                 template="Is there a contradiction in the relationship between {source_entity} and {target_entity}?",
                 question_type=QuestionType.CONFLICTING,

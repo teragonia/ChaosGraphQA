@@ -244,7 +244,8 @@ class HuggingFaceProvider(BaseLLMProvider):
     def test_connection(self) -> bool:
         """Test connection to HuggingFace."""
         try:
-            response = self.generate("Hello", max_tokens=1, temperature=0.1)
+            # Make a minimal request - don't specify max_tokens, let model use its default
+            response = self.generate("Hello", temperature=0.1)
             return response.error is None
         except Exception:
             return False
@@ -346,7 +347,7 @@ class HuggingFaceProvider(BaseLLMProvider):
         api_key: Optional[str] = None,
         inference_mode: str = "api",
         temperature: float = 0.1,
-        max_tokens: int = 1000,
+        max_tokens: Optional[int] = None,
         **kwargs: Any,
     ) -> LLMConfig:
         """Create a configuration for HuggingFace provider.
