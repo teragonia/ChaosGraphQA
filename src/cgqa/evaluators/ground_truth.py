@@ -72,7 +72,7 @@ class GroundTruthVerifier:
 
     def _verify_multihop_answer(self, question: Question) -> Dict[str, Any]:
         """Verify multi-hop reasoning answers."""
-        answer = question.ground_truth
+        answer: Any = question.ground_truth
         context_entities = question.context_entities
 
         if len(context_entities) < 2:
@@ -182,7 +182,7 @@ class GroundTruthVerifier:
         # Find actual shortest path for comparison
         actual_shortest = self.algorithms.find_shortest_path(start, end)
 
-        details = {
+        details: dict[str, Any] = {
             "expected_path": expected_entities,
             "actual_shortest_path": actual_shortest,
             "path_valid": path_valid,
@@ -252,11 +252,12 @@ class GroundTruthVerifier:
         actual_intermediate = shortest_path[1:-1] if len(shortest_path) > 2 else []
 
         # Convert entity IDs to names for comparison
-        actual_names = [
-            self.kg.get_entity(eid).name
+        entities: list = [
+            self.kg.get_entity(eid)
             for eid in actual_intermediate
             if self.kg.get_entity(eid)
         ]
+        actual_names = [entity.name for entity in entities if entity is not None]
 
         # Check if expected entities match actual intermediate entities
         expected_set = set(expected_entities)
@@ -433,6 +434,7 @@ class GroundTruthVerifier:
             for chain in relevant_chains:
                 effect_entity = self.kg.get_entity(chain["effect"])
                 if effect_entity and effect_entity.name == expected_name:
+                    entities: list = [self.kg.get_entity(eid) for eid in chain["chain"]]
                     return {
                         "is_valid": True,
                         "confidence": 1.0,
@@ -440,7 +442,7 @@ class GroundTruthVerifier:
                         "details": {
                             "expected_effect": expected_name,
                             "verified_chain": [
-                                self.kg.get_entity(eid).name for eid in chain["chain"]
+                                entity.name for entity in entities if entity is not None
                             ],
                         },
                     }

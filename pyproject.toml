@@ -7,7 +7,7 @@ name = "cgqa"
 version = "0.1.0"
 description = "ChaosGraphQA - A randomized benchmark for testing LLM reasoning capabilities"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "ChaosGraphQA Contributors"}
@@ -54,13 +54,18 @@ llm = [
     "openai>=1.0",
     "anthropic>=0.7",
     "google-generativeai>=0.3.0",
+    "huggingface_hub>=0.20.0",
+    "requests>=2.28",
+]
+
+llm-local = [
     "transformers>=4.20.0",
     "torch>=1.12.0",
-    "requests>=2.28",
 ]
 
 [project.scripts]
 cgqa = "cgqa.cli.main:cli"
+cgqa_bm = "cgqa.run_leaderboard_benchmark:main"
 
 [project.urls]
 Homepage = "https://github.com/your-org/cgqa"
@@ -82,7 +87,7 @@ profile = "black"
 line_length = 88
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -100,3 +105,8 @@ strict_equality = true
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 addopts = "-v"
+
+[dependency-groups]
+dev = [
+    "types-networkx>=3.4.2.20250509",
+]

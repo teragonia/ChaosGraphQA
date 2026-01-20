@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
 import networkx as nx
+from typing_extensions import TypeAlias
 
 from ..models.graph import Entity, KnowledgeGraph, Relationship
 from ..models.question import QuestionType
@@ -228,3 +229,6 @@ class BaseGraphGenerator(ABC):
             return False
 
         return True
+
+
+GeneratorType: TypeAlias = BaseGraphGenerator

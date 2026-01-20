@@ -29,16 +29,20 @@ class ProviderFactory:
         "gpt-3.5-turbo": "openai",
         "o1-preview": "openai",
         "o1-mini": "openai",
+        "claude-4.5-opus": "anthropic",
+        "claude-4.5-haiku": "anthropic",
+        "claude-4.5-sonnet": "anthropic",
+        "claude-4.1-opus": "anthropic",
+        "claude-4-opus": "anthropic",
+        "claude-4-sonnet": "anthropic",
+        "claude-3.7-sonnet": "anthropic",
         "claude-3.5-sonnet": "anthropic",
         "claude-3.5-haiku": "anthropic",
-        "claude-3-opus": "anthropic",
-        "claude-3-sonnet": "anthropic",
         "claude-3-haiku": "anthropic",
-        "gemini-1.5-pro": "gemini",
-        "gemini-1.5-flash": "gemini",
-        "gemini-1.0-pro": "gemini",
-        "gemini-exp-1114": "gemini",
-        "gemini-exp-1121": "gemini",
+        "gemini-2.5-pro": "gemini",
+        "gemini-2.5-flash": "gemini",
+        "gemini-2.5-flash-lite": "gemini",
+        "gemini-2.0-flash": "gemini",
     }
 
     @classmethod
@@ -46,7 +50,7 @@ class ProviderFactory:
         self,
         model_identifier: str,
         config: Optional[Union[LLMConfig, Dict[str, Any]]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> BaseLLMProvider:
         """Create an LLM provider instance.
 
@@ -62,6 +66,7 @@ class ProviderFactory:
         Raises:
             ValueError: If provider or model is not supported
         """
+        provider_name: Optional[str]
         if "/" in model_identifier:
             provider_name, model_name = model_identifier.split("/", 1)
         else:
@@ -119,7 +124,7 @@ class ProviderFactory:
         return provider_class(llm_config)
 
     @classmethod
-    def create_from_string(self, model_string: str, **kwargs) -> BaseLLMProvider:
+    def create_from_string(self, model_string: str, **kwargs: Any) -> BaseLLMProvider:
         """Create provider from simple string specification.
 
         Args:
@@ -162,7 +167,7 @@ class ProviderFactory:
 
     @classmethod
     def create_config_for_provider(
-        self, provider_name: str, model_name: str, **kwargs
+        self, provider_name: str, model_name: str, **kwargs: Any
     ) -> LLMConfig:
         """Create a default configuration for a specific provider.
 
@@ -180,7 +185,8 @@ class ProviderFactory:
         provider_class = self.PROVIDERS[provider_name]
 
         if hasattr(provider_class, "create_config"):
-            return provider_class.create_config(model=model_name, **kwargs)
+            retval: LLMConfig = provider_class.create_config(model=model_name, **kwargs)
+            return retval
         else:
             return LLMConfig(
                 provider_name=provider_name, model_name=model_name, **kwargs

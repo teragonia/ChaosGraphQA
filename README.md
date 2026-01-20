@@ -42,16 +42,16 @@ cgqa list-models
 
 # Evaluate with different LLM providers
 cgqa evaluate benchmark.json --model openai/gpt-4o-mini --output results.json
-cgqa evaluate benchmark.json --model anthropic/claude-3.5-sonnet --output results.json
-cgqa evaluate benchmark.json --model gemini/gemini-1.5-flash --output results.json
-cgqa evaluate benchmark.json --model huggingface/microsoft/DialoGPT-medium --output results.json
+cgqa evaluate benchmark.json --model anthropic/claude-3.7-sonnet --output results.json
+cgqa evaluate benchmark.json --model gemini/gemini-2.5-flash --output results.json
+cgqa evaluate benchmark.json --model huggingface/HuggingFaceTB/SmolLM3-3B --output results.json
 
 # Test LLM connection
-cgqa test-model --model anthropic/claude-3.5-sonnet
+cgqa test-model --model anthropic/claude-3.7-sonnet
 
 # Advanced evaluation options
 cgqa evaluate benchmark.json \
-  --model anthropic/claude-3.5-sonnet \
+  --model anthropic/claude-4.5-sonnet \
   --temperature 0.1 \
   --max-tokens 1500 \
   --batch-size 5 \
@@ -68,7 +68,7 @@ cgqa analyze results.json    # Analyze evaluation results
 
 ```python
 from cgqa.generators import (
-    MultiHopGenerator, HierarchicalGenerator, TemporalGenerator, 
+    MultiHopGenerator, HierarchicalGenerator, TemporalGenerator,
     WeightedGenerator, ConflictingGenerator
 )
 from cgqa.questions import QuestionGenerator
@@ -77,7 +77,7 @@ from cgqa.llm.evaluation.llm_evaluator import LLMEvaluator
 
 # Generate different types of knowledge graphs
 multihop_gen = MultiHopGenerator(complexity_level=2, seed=42)
-hierarchical_gen = HierarchicalGenerator(complexity_level=3, seed=123) 
+hierarchical_gen = HierarchicalGenerator(complexity_level=3, seed=123)
 temporal_gen = TemporalGenerator(complexity_level=2, seed=456)
 weighted_gen = WeightedGenerator(complexity_level=2, seed=789)
 conflicting_gen = ConflictingGenerator(complexity_level=2, seed=101)
@@ -89,8 +89,8 @@ print(f"Generated graph: {len(kg.entities)} entities, {len(kg.relationships)} re
 # Generate questions
 question_gen = QuestionGenerator(seed=42)
 questions = question_gen.generate_questions(
-    kg, 
-    question_types=[QuestionType.HIERARCHICAL], 
+    kg,
+    question_types=[QuestionType.HIERARCHICAL],
     num_questions_per_type=5,
     complexity_levels=[2, 3]
 )
@@ -98,20 +98,20 @@ questions = question_gen.generate_questions(
 # Evaluate with multiple LLM providers
 models_to_test = [
     "openai/gpt-4o-mini",
-    "anthropic/claude-3.5-sonnet", 
-    "gemini/gemini-1.5-flash"
+    "anthropic/claude-3.7-sonnet",
+    "gemini/gemini-2.5-flash"
 ]
 
 for model_name in models_to_test:
     print(f"\n=== Evaluating {model_name} ===")
     evaluator = LLMEvaluator.from_model_string(model_name)
     summary = evaluator.evaluate_questions(questions.questions, kg)
-    
+
     print(f"Accuracy: {summary.accuracy:.1%}")
     print(f"Average Score: {summary.average_score:.3f}")
     print(f"Tokens Used: {summary.total_tokens_used:,}")
     print(f"Response Time: {summary.evaluation_time:.1f}s")
-    
+
     # Save results
     evaluator.save_results(summary, f"results_{model_name.replace('/', '_')}.json")
 ```
@@ -139,6 +139,31 @@ export ANTHROPIC_API_KEY="your-key-here"
 export GOOGLE_API_KEY="your-key-here"
 export HF_TOKEN="your-token-here"
 ```
+
+### Supported Models
+
+ChaosGraphQA supports multiple LLM providers with the latest models:
+
+**OpenAI**:
+- GPT-5 family: `gpt-5`, `gpt-5-mini`, `gpt-5-nano` (400K context)
+- GPT-4 family: `gpt-4.1`, `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`
+- o-series: `o3`, `o4-mini` (reasoning models, 200K context)
+
+**Anthropic Claude**:
+- Claude 4.5: `claude-4.5-opus`, `claude-4.5-sonnet`, `claude-4.5-haiku`
+- Claude 4: `claude-4.1-opus`, `claude-4-opus`, `claude-4-sonnet`
+- Claude 3.7: `claude-3.7-sonnet` (latest 3.x model)
+- Claude 3.5: `claude-3.5-haiku`
+- Claude 3: `claude-3-haiku`
+
+**Google Gemini**:
+- Gemini 2.5: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.5-flash-lite` (1M context)
+- Gemini 2.0: `gemini-2.0-flash`
+
+**HuggingFace**:
+- Any HuggingFace model (e.g., `HuggingFaceTB/SmolLM3-3B`, `distilgpt2`)
+
+Use `cgqa list-models` to see all available models and check provider availability.
 
 ### Output Directory Structure
 
@@ -266,7 +291,7 @@ Test LLMs' ability to traverse multi-step relationships and find complex connect
 **Capabilities:**
 - Path finding between distant entities (2-6 hops)
 - Shortest path computation with BFS verification
-- Intermediate entity identification along paths  
+- Intermediate entity identification along paths
 - Path existence verification with directed/undirected graphs
 - Relationship-specific path constraints
 
@@ -305,7 +330,7 @@ Test comprehension of time-based relationships, event sequences, and causality.
 - "What is the final outcome when Budget Approval triggers a causal chain?"
 - "How many steps are in the causal chain from Research to Product Launch?"
 
-### ⚖️ Weighted Reasoning  
+### ⚖️ Weighted Reasoning
 Assess handling of probabilistic information, confidence scores, and uncertainty.
 
 **Capabilities:**
@@ -336,18 +361,18 @@ Challenge LLMs to detect contradictions and reason about inconsistent data.
 - "Are the entities {Marketing, Sales, Engineering} part of a consistent subgraph?"
 - "What type of conflict exists between the 'is_friend_of' and 'is_enemy_of' relationships?"
 
-## Leaderboard & Benchmark Results
+## Benchmark Results
 
-For comprehensive benchmark results across 12 state-of-the-art models, see [BENCHMARK_RESULTS.md](BENCHMARK_RESULTS.md).
+Evaluated 13 state-of-the-art models across 780 evaluations. Performance ranged from 38.0% to 90.6%.
 
-**Latest results (November 10, 2025)**:
-- 720 total evaluations (12 models × 5 reasoning types × 4 complexity levels × 3 runs)
-- Top performers: GPT-5 (79.0%), GPT-5-mini (75.0%), GPT-4.1 (71.8%)
-- Claude Sonnet 4.5 achieves 69.7% accuracy (4th overall)
+**Top performers**:
+- Gemini-3-Pro-Preview: 90.6%
+- Claude Sonnet 4.5: 88.7%
+- Gemini-3-Flash-Preview: 88.4%
 
-To run the full leaderboard benchmark:
+Run the full leaderboard:
 ```bash
-python run_leaderboard_benchmark.py
+cgqa_bm
 ```
 
 ## Example Results
@@ -356,7 +381,7 @@ Here's a sample evaluation showing how different LLMs perform across reasoning t
 
 ### Multi-hop Reasoning (Complexity 2, 5 questions)
 ```
-Model: anthropic/claude-3.5-sonnet
+Model: anthropic/claude-3.7-sonnet
 Accuracy: 60.0%
 Average Score: 0.620
 Total Time: 23.5s
@@ -364,7 +389,7 @@ Tokens Used: 4,251
 Performance: ✓ Strong path-finding abilities, occasionally misses intermediate steps
 ```
 
-### Hierarchical Reasoning (Complexity 3, 5 questions)  
+### Hierarchical Reasoning (Complexity 3, 5 questions)
 ```
 Model: openai/gpt-4o-mini
 Accuracy: 80.0%
@@ -376,7 +401,7 @@ Performance: ✓ Excellent taxonomy understanding, handles inheritance well
 
 ### Conflicting Information (Complexity 2, 5 questions)
 ```
-Model: gemini/gemini-1.5-flash
+Model: gemini/gemini-2.5-flash
 Accuracy: 40.0%
 Average Score: 0.420
 Total Time: 15.8s
@@ -395,7 +420,7 @@ Performance: ⚠ Struggles with contradiction detection, needs improvement
 
 ChaosGraphQA prevents gaming and memorization through several key design principles:
 
-🎲 **Dynamic Generation**: Each benchmark run creates unique graphs with different entity names, relationships, and structures, even with the same seed and parameters.
+🎲 **Dynamic Generation**: Each benchmark run creates unique graphs with different entity names, relationships, and structures. Using different seeds ensures different graphs, while the same seed guarantees reproducibility.
 
 🔧 **Configurable Complexity**: Four complexity levels automatically adjust graph size, relationship density, and question difficulty, preventing optimization for specific configurations.
 

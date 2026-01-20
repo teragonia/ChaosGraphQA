@@ -110,6 +110,9 @@ class QuestionGenerator:
                 attempts = 0
                 max_attempts = num_questions_per_type * 10
 
+                # Track generated question texts to ensure uniqueness
+                generated_question_texts = set()
+
                 while (
                     questions_generated < num_questions_per_type
                     and attempts < max_attempts
@@ -121,8 +124,12 @@ class QuestionGenerator:
                             kg, template, complexity
                         )
                         if question:
-                            question_set.add_question(question)
-                            questions_generated += 1
+                            # Check if this question text is unique
+                            if question.question_text not in generated_question_texts:
+                                question_set.add_question(question)
+                                generated_question_texts.add(question.question_text)
+                                questions_generated += 1
+                            # If duplicate, we'll try again in next iteration
                     except Exception as e:
                         # Log error but continue
                         print(f"Failed to generate question: {e}")
@@ -220,7 +227,7 @@ class QuestionGenerator:
                 entity = kg.get_entity(eid)
                 if entity:
                     path_names.append(entity.name)
-            answer_value = " → ".join(path_names)
+            answer_value: Any = " → ".join(path_names)
             explanation = f"The path from {start_entity.name} to {end_entity.name} is: {answer_value}"
         elif template.answer_type == AnswerType.BOOLEAN:
             answer_value = True  # Path exists
@@ -341,7 +348,7 @@ class QuestionGenerator:
 
         # Create ground truth answer using VERIFIED path information
         if template.answer_type == AnswerType.BOOLEAN:
-            answer_value = actual_path_length > 0  # Path exists and has length > 0
+            answer_value: Any = actual_path_length > 0  # Path exists and has length > 0
             if answer_value:
                 explanation = f"Yes, {leaf_entity.name} connects to {root_entity.name} through {chosen_path['relation_type']} relationships"
             else:
@@ -350,11 +357,12 @@ class QuestionGenerator:
             # Build actual path from relationships
             actual_path_entities = self._get_actual_hierarchical_path(kg, chosen_path)
             if actual_path_entities:
-                path_names = [
-                    kg.get_entity(eid).name
+                entities = [
+                    kg.get_entity(eid)
                     for eid in actual_path_entities
                     if kg.get_entity(eid)
                 ]
+                path_names = [entity.name for entity in entities if entity is not None]
                 answer_value = " → ".join(path_names)
                 explanation = f"The path is: {answer_value}"
             else:
@@ -437,7 +445,7 @@ class QuestionGenerator:
                     # Build causal graph and find terminal nodes reachable from cause
                     import networkx as nx
 
-                    causal_graph = nx.DiGraph()
+                    causal_graph: nx.DiGraph = nx.DiGraph()
                     for rel in kg.relationships:
                         if rel.relation_type == "causes":
                             causal_graph.add_edge(rel.source, rel.target)
@@ -455,7 +463,7 @@ class QuestionGenerator:
 
                         if terminal_nodes:
                             # Pick the terminal node with the longest path from cause
-                            longest_path = []
+                            longest_path: list = []
                             longest_terminal = None
 
                             for terminal in terminal_nodes:
@@ -471,17 +479,22 @@ class QuestionGenerator:
 
                             if longest_terminal:
                                 terminal_entity = kg.get_entity(longest_terminal)
-                                answer_value = (
+                                answer_value: Any = (
                                     terminal_entity.name
                                     if terminal_entity
                                     else effect_entity.name
                                 )
 
                                 # Build explanation with the longest path
-                                terminal_chain_names = [
-                                    kg.get_entity(nid).name
+                                entities: list = [
+                                    kg.get_entity(nid)
                                     for nid in longest_path
                                     if kg.get_entity(nid)
+                                ]
+                                terminal_chain_names = [
+                                    entity.name
+                                    for entity in entities
+                                    if entity is not None
                                 ]
                                 explanation = (
                                     f"Causal chain: {' → '.join(terminal_chain_names)}"
@@ -533,7 +546,7 @@ class QuestionGenerator:
                     # Build a graph of temporal relationships (both "before" and "causes") and traverse to find the last event
                     import networkx as nx
 
-                    temporal_graph = nx.DiGraph()
+                    temporal_graph: nx.DiGraph = nx.DiGraph()
                     for rel in kg.relationships:
                         if rel.relation_type in ["before", "causes"]:
                             temporal_graph.add_edge(rel.source, rel.target)
@@ -551,8 +564,22 @@ class QuestionGenerator:
                         ]
 
                         if terminal_nodes:
-                            # If multiple terminal nodes, pick the first one (arbitrary but consistent)
+                            # Find the terminal node with the longest path from first_event
+                            max_path_length = -1
                             last_event_id = terminal_nodes[0]
+
+                            for terminal in terminal_nodes:
+                                try:
+                                    # Compute shortest path (which is the actual relationship path)
+                                    path = nx.shortest_path(
+                                        temporal_graph, first_event_id, terminal
+                                    )
+                                    if len(path) > max_path_length:
+                                        max_path_length = len(path)
+                                        last_event_id = terminal
+                                except nx.NetworkXNoPath:
+                                    continue
+
                             last_event = kg.get_entity(last_event_id)
                             answer_value = (
                                 last_event.name if last_event else event_names[-1]
@@ -603,16 +630,26 @@ class QuestionGenerator:
     def _check_entities_connected(
         self, kg: KnowledgeGraph, entity_ids: List[str]
     ) -> bool:
-        """Check if a set of entities are connected through consistent relationships."""
+        """Check if entities are connected through CONSISTENT (non-conflicting) relationships.
+
+        This allows transitive connections through intermediate nodes, but ONLY via
+        relationships marked as consistent=True. If a path requires passing through
+        a conflicting relationship (consistent=False), the entities are NOT consistently related.
+
+        This tests whether LLMs can:
+        1. Identify semantic contradictions
+        2. Avoid reasoning through conflicting relationships
+        3. Find paths through only consistent information
+        """
         import networkx as nx
 
-        # Build a graph of only consistent relationships
-        G = nx.Graph()
+        # Build a graph with ALL consistent relationships (allows transitive connections)
+        G: nx.Graph = nx.Graph()
         for rel in kg.relationships:
             if rel.properties.get("consistent", True):
-                # Only include relationships between the entities we're checking
-                if rel.source in entity_ids and rel.target in entity_ids:
-                    G.add_edge(rel.source, rel.target)
+                # Include ALL consistent relationships, not just between query entities
+                # This allows finding transitive paths through intermediate nodes
+                G.add_edge(rel.source, rel.target)
 
         # Check if all entities are in the same connected component
         if len(entity_ids) <= 1:
@@ -625,7 +662,7 @@ class QuestionGenerator:
         # Find connected components
         components = list(nx.connected_components(G))
 
-        # Check if all entities are in the same component
+        # Check if all entities are in the same component (via consistent edges only)
         entity_set = set(entity_ids)
         for component in components:
             if entity_set.issubset(component):
@@ -649,7 +686,7 @@ class QuestionGenerator:
         # - located_in: City located_in State (City -> State)
         # - part_of: Component part_of System (Component -> System)
         # - reports_to: Manager reports_to Director (Manager -> Director)
-        G = nx.DiGraph()
+        G: nx.DiGraph = nx.DiGraph()
         for rel in kg.relationships:
             if rel.relation_type == relation_type:
                 G.add_edge(rel.source, rel.target)
@@ -676,7 +713,7 @@ class QuestionGenerator:
 
         # Build directed graph from actual relationships
         # All hierarchical relationships point child -> parent (upward toward root)
-        G = nx.DiGraph()
+        G: nx.DiGraph = nx.DiGraph()
         for rel in kg.relationships:
             if rel.relation_type == relation_type:
                 G.add_edge(rel.source, rel.target)
@@ -684,7 +721,10 @@ class QuestionGenerator:
         # Get actual path
         if nx.has_path(G, start_entity, end_entity):
             try:
-                return nx.shortest_path(G, start_entity, end_entity)
+                retval: Optional[List[str]] = nx.shortest_path(
+                    G, start_entity, end_entity
+                )
+                return retval
             except nx.NetworkXNoPath:
                 return None
         else:
@@ -702,7 +742,9 @@ class QuestionGenerator:
         # Build weighted graph from actual relationships respecting semantic directionality
         from ..models.relationship_semantics import RelationshipSemantics
 
-        G = nx.DiGraph()  # Use directed graph to respect semantic directionality
+        G: nx.DiGraph = (
+            nx.DiGraph()
+        )  # Use directed graph to respect semantic directionality
 
         # Add nodes
         for entity_id in kg.entities.keys():
@@ -791,7 +833,7 @@ class QuestionGenerator:
         from ..models.relationship_semantics import RelationshipSemantics
 
         # Build directed graph respecting semantic directionality (same as evaluation system)
-        G = nx.DiGraph()
+        G: nx.DiGraph = nx.DiGraph()
 
         # Add nodes
         for entity_id in kg.entities.keys():
@@ -993,7 +1035,10 @@ class QuestionGenerator:
             # that have consistent relationships with the named entities in the question
             if template.answer_type == AnswerType.NUMERIC:
                 # Use a subset of entities from the subgraph for the question (3 entities)
-                question_entities = list(chosen_subgraph["entities"])[:3]
+                # BUGFIX: Randomly sample entities instead of always taking first 3
+                entities_list = list(chosen_subgraph["entities"])
+                sample_size = min(3, len(entities_list))
+                question_entities = self.rng.sample(entities_list, sample_size)
                 involved_entities = set(
                     question_entities
                 )  # Start with the named entities
@@ -1037,13 +1082,25 @@ class QuestionGenerator:
                 }
 
                 # Count entities involved in consistent relationships with the named entities
-                answer_value = len(involved_entities)
-                explanation = f"{answer_value} entities are involved in consistent relationships within the subgraph"
+                len_answer_value = len(involved_entities)
+                explanation = f"{len_answer_value} entities are involved in consistent relationships within the subgraph"
 
             else:
                 # For boolean questions, check if the selected entities are actually connected
-                # within the consistent subgraph
-                question_entities = list(chosen_subgraph["entities"])[:3]
+                # CRITICAL: To get mix of True/False answers, sometimes select from consistent subgraph
+                # (answer=True) and sometimes select across all entities including those with conflicts (answer may be False)
+
+                # 50% chance to select from consistent subgraph only (likely True)
+                # 50% chance to select from all entities (may include conflicts, likely False)
+                if self.rng.random() < 0.5:
+                    # Select from consistent subgraph only
+                    entities_list = list(chosen_subgraph["entities"])
+                else:
+                    # Select from ALL entities to include potential conflicts
+                    entities_list = list(kg.entities.keys())
+
+                sample_size = min(3, len(entities_list))
+                question_entities = self.rng.sample(entities_list, sample_size)
                 entity_names = []
                 for eid in question_entities:
                     entity = kg.get_entity(eid)
@@ -1070,7 +1127,7 @@ class QuestionGenerator:
                     if entity_subgraph_connected:
                         explanation = f"Yes, the entities {', '.join(entity_names)} are connected through consistent relationships"
                     else:
-                        explanation = f"No, the entities {', '.join(entity_names)} are not directly connected through consistent relationships"
+                        explanation = f"No, the entities {', '.join(entity_names)} are not connected through consistent relationships"
                 else:
                     # For other answer types, assume consistent subgraph exists
                     answer_value = True
@@ -1358,6 +1415,28 @@ class ConflictingTemplates:
     def get_templates(self) -> List[QuestionTemplate]:
         """Get all conflicting information question templates."""
         return [
+            # Complexity Level 1 templates (CRITICAL FIX: Added to support c1 benchmarks)
+            QuestionTemplate(
+                template="Does {source_entity} have any conflicting information about {target_entity}?",
+                question_type=QuestionType.CONFLICTING,
+                complexity_level=1,
+                required_graph_features=["detected_conflicts"],
+                variables={
+                    "source_entity": "Source entity",
+                    "target_entity": "Target entity",
+                    "query_type": "detection",
+                },
+                answer_type=AnswerType.BOOLEAN,
+            ),
+            QuestionTemplate(
+                template="Are {entity_set} connected through consistent (non-conflicting) relationships?",
+                question_type=QuestionType.CONFLICTING,
+                complexity_level=1,
+                required_graph_features=["consistent_subgraphs"],
+                variables={"entity_set": "Entity set", "query_type": "consistency"},
+                answer_type=AnswerType.BOOLEAN,
+            ),
+            # Complexity Level 2 templates
             QuestionTemplate(
                 template="Is there a contradiction in the relationship between {source_entity} and {target_entity}?",
                 question_type=QuestionType.CONFLICTING,
@@ -1371,7 +1450,7 @@ class ConflictingTemplates:
                 answer_type=AnswerType.BOOLEAN,
             ),
             QuestionTemplate(
-                template="Are the entities {entity_set} part of a consistent subgraph?",
+                template="Can {entity_set} be connected without passing through conflicting relationships?",
                 question_type=QuestionType.CONFLICTING,
                 complexity_level=2,
                 required_graph_features=["consistent_subgraphs"],

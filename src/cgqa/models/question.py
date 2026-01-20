@@ -146,8 +146,8 @@ class QuestionSet(BaseModel):
         if not self.questions:
             return {"total": 0}
 
-        type_counts = {}
-        complexity_counts = {}
+        type_counts: dict = {}
+        complexity_counts: dict = {}
 
         for q in self.questions:
             type_counts[q.question_type] = type_counts.get(q.question_type, 0) + 1

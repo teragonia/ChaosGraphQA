@@ -13,7 +13,6 @@ try:
     HF_HUB_AVAILABLE = True
 except ImportError:
     HF_HUB_AVAILABLE = False
-    InferenceClient = None
 
 try:
     import torch
@@ -42,12 +41,11 @@ class HuggingFaceProvider(BaseLLMProvider):
 
     def __init__(self, config: LLMConfig):
         # Ensure extra_params exists
-        if config.extra_params is None:
-            config.extra_params = {}
+        extra_params: dict = {} if config.extra_params is None else config.extra_params
 
         # Determine inference mode: 'api' or 'local'
         # Set this BEFORE calling super().__init__() so it's available in all methods
-        self.inference_mode = config.extra_params.get("inference_mode", "api")
+        self.inference_mode = extra_params.get("inference_mode", "api")
 
         if self.inference_mode == "api" and not HF_HUB_AVAILABLE:
             raise ImportError(
@@ -118,28 +116,37 @@ class HuggingFaceProvider(BaseLLMProvider):
                 f"Failed to load HuggingFace model '{self.config.model_name}': {e}"
             )
 
-    def _make_request(self, prompt: str, **kwargs) -> LLMResponse:
+    def _make_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Make a request to HuggingFace (API or local)."""
         if self.inference_mode == "api":
             return self._make_api_request(prompt, **kwargs)
         else:
             return self._make_local_request(prompt, **kwargs)
 
-    def _make_api_request(self, prompt: str, **kwargs) -> LLMResponse:
+    def _make_api_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Make an API request to HuggingFace Inference API using InferenceClient."""
         try:
             # Prepare request parameters for chat completions
             request_params = {
                 "model": self.config.model_name,
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
                 "temperature": kwargs.get("temperature", self.config.temperature),
             }
+
+            # Only include max_tokens if explicitly set (not None)
+            max_tokens_value = kwargs.get("max_tokens", self.config.max_tokens)
+            if max_tokens_value is not None:
+                request_params["max_tokens"] = max_tokens_value
 
             # Add additional parameters
             for key, value in kwargs.items():
                 if key not in ["max_tokens", "temperature"] and not key.startswith("_"):
-                    if key in ["top_p", "top_k", "frequency_penalty", "presence_penalty"]:
+                    if key in [
+                        "top_p",
+                        "top_k",
+                        "frequency_penalty",
+                        "presence_penalty",
+                    ]:
                         request_params[key] = value
 
             # Make request using chat completions
@@ -177,7 +184,7 @@ class HuggingFaceProvider(BaseLLMProvider):
                 error_type=type(e).__name__,
             )
 
-    def _make_local_request(self, prompt: str, **kwargs) -> LLMResponse:
+    def _make_local_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Make a local inference request."""
         try:
             # Tokenize input
@@ -188,7 +195,6 @@ class HuggingFaceProvider(BaseLLMProvider):
 
             # Generation parameters
             generation_kwargs = {
-                "max_new_tokens": kwargs.get("max_tokens", self.config.max_tokens),
                 "temperature": kwargs.get("temperature", self.config.temperature),
                 "do_sample": (
                     True
@@ -197,6 +203,11 @@ class HuggingFaceProvider(BaseLLMProvider):
                 ),
                 "pad_token_id": self.tokenizer.eos_token_id,
             }
+
+            # Only include max_new_tokens if explicitly set (not None)
+            max_tokens_value = kwargs.get("max_tokens", self.config.max_tokens)
+            if max_tokens_value is not None:
+                generation_kwargs["max_new_tokens"] = max_tokens_value
 
             # Add additional parameters
             for key, value in kwargs.items():
@@ -241,7 +252,8 @@ class HuggingFaceProvider(BaseLLMProvider):
     def test_connection(self) -> bool:
         """Test connection to HuggingFace."""
         try:
-            response = self.generate("Hello", max_tokens=1, temperature=0.1)
+            # Make a minimal request - don't specify max_tokens, let model use its default
+            response = self.generate("Hello", temperature=0.1)
             return response.error is None
         except Exception:
             return False
@@ -251,7 +263,7 @@ class HuggingFaceProvider(BaseLLMProvider):
         errors = super().validate_config()
 
         # Get inference mode (might not be set if called from factory validation)
-        inference_mode = getattr(self, 'inference_mode', None)
+        inference_mode = getattr(self, "inference_mode", None)
         if inference_mode is None and self.config.extra_params:
             inference_mode = self.config.extra_params.get("inference_mode", "api")
         elif inference_mode is None:
@@ -317,7 +329,9 @@ class HuggingFaceProvider(BaseLLMProvider):
         Many HF models work better with chat-style prompts, but we also need structured output.
         """
         # Get the structured prompt from base class
-        base_prompt = super().format_question_prompt(question, context, answer_type, question_type)
+        base_prompt = super().format_question_prompt(
+            question, context, answer_type, question_type  # type: ignore
+        )
 
         # Check if model is a chat/instruct model
         is_chat_model = any(
@@ -341,8 +355,8 @@ class HuggingFaceProvider(BaseLLMProvider):
         api_key: Optional[str] = None,
         inference_mode: str = "api",
         temperature: float = 0.1,
-        max_tokens: int = 1000,
-        **kwargs,
+        max_tokens: Optional[int] = None,
+        **kwargs: Any,
     ) -> LLMConfig:
         """Create a configuration for HuggingFace provider.
 

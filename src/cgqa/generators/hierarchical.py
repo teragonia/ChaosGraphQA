@@ -265,7 +265,7 @@ class HierarchicalGenerator(BaseGraphGenerator):
         # Build adjacency list (parent -> children)
         # All relationships now point child -> parent, so:
         # parent = rel.target, child = rel.source
-        children = {}
+        children: dict = {}
         for rel in relationships:
             parent = rel.target
             child = rel.source
@@ -346,7 +346,7 @@ class HierarchicalGenerator(BaseGraphGenerator):
 
         for hierarchy in hierarchies:
             # Build hierarchy graph
-            hierarchy_graph = nx.DiGraph()
+            hierarchy_graph: nx.DiGraph = nx.DiGraph()
             relation_type = hierarchy["relation"]
 
             for rel in kg.relationships:

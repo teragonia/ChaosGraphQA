@@ -4,7 +4,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import click
 from rich import print as rprint
@@ -13,6 +13,8 @@ from rich.progress import track
 from rich.table import Table
 
 from ..evaluators.ground_truth import GroundTruthVerifier
+from ..generators import GeneratorType
+from ..generators.base_generator import BaseGraphGenerator
 from ..generators.conflicting import ConflictingGenerator
 from ..generators.hierarchical import HierarchicalGenerator
 from ..generators.multihop import MultiHopGenerator
@@ -21,7 +23,7 @@ from ..generators.weighted import WeightedGenerator
 from ..llm.evaluation.llm_evaluator import LLMEvaluator
 from ..llm.evaluation.provider_factory import ProviderFactory
 from ..models.graph import KnowledgeGraph
-from ..models.question import QuestionType
+from ..models.question import QuestionSet, QuestionType
 from ..questions.templates import QuestionGenerator
 from ..utils.directory_manager import DirectoryManager, get_default_directory_manager
 
@@ -30,7 +32,7 @@ console = Console()
 
 @click.group()
 @click.version_option()
-def cli():
+def cli() -> None:
     """ChaosGraphQA (CGQA)
 
     A comprehensive benchmark for testing reasoning capabilities of LLMs
@@ -83,11 +85,11 @@ def generate(
     output_dir: Optional[str],
     verify: bool,
     output_info: Optional[str],
-):
+) -> None:
     """Generate a benchmark dataset."""
 
     # Initialize directory manager
-    dir_manager = (
+    dir_manager: DirectoryManager = (
         DirectoryManager(output_dir) if output_dir else get_default_directory_manager()
     )
 
@@ -101,7 +103,9 @@ def generate(
     try:
         # Generate knowledge graph
         if generator_type == "multihop":
-            generator = MultiHopGenerator(complexity_level=complexity, seed=seed)
+            generator: GeneratorType = MultiHopGenerator(
+                complexity_level=complexity, seed=seed
+            )
         elif generator_type == "hierarchical":
             generator = HierarchicalGenerator(complexity_level=complexity, seed=seed)
         elif generator_type == "temporal":
@@ -115,17 +119,17 @@ def generate(
             sys.exit(1)
 
         with console.status("[bold green]Generating knowledge graph..."):
-            kg = generator.generate()
+            kg: KnowledgeGraph = generator.generate()
 
         console.print(
             f"[green]✓[/green] Generated graph with {len(kg.entities)} entities and {len(kg.relationships)} relationships"
         )
 
         # Generate questions
-        question_gen = QuestionGenerator(seed=seed)
+        question_gen: QuestionGenerator = QuestionGenerator(seed=seed)
 
         # Map generator type to question type
-        question_type_mapping = {
+        question_type_mapping: dict[str, QuestionType] = {
             "multihop": QuestionType.MULTIHOP,
             "hierarchical": QuestionType.HIERARCHICAL,
             "temporal": QuestionType.TEMPORAL,
@@ -133,10 +137,10 @@ def generate(
             "conflicting": QuestionType.CONFLICTING,
         }
 
-        target_question_type = question_type_mapping[generator_type]
+        target_question_type: QuestionType = question_type_mapping[generator_type]
 
         with console.status("[bold green]Generating questions..."):
-            question_set = question_gen.generate_questions(
+            question_set: QuestionSet = question_gen.generate_questions(
                 kg,
                 question_types=[target_question_type],
                 num_questions_per_type=num_questions,
@@ -150,7 +154,7 @@ def generate(
         # Verify ground truth if requested
         if verify:
             with console.status("[bold green]Verifying ground truth..."):
-                verifier = GroundTruthVerifier(kg)
+                verifier: GroundTruthVerifier = GroundTruthVerifier(kg)
                 verification_results = verifier.verify_question_set(
                     question_set.questions
                 )
@@ -216,7 +220,7 @@ def generate(
 @click.option(
     "--model",
     required=True,
-    help="Model to evaluate (e.g., 'openai/gpt-4o', 'anthropic/claude-3.5-sonnet', 'gemini/gemini-1.5-flash')",
+    help="Model to evaluate (e.g., 'openai/gpt-4o', 'anthropic/claude-3.7-sonnet', 'gemini/gemini-1.5-flash')",
 )
 @click.option(
     "--output",
@@ -236,7 +240,12 @@ def generate(
 @click.option(
     "--temperature", type=float, default=0.1, help="Sampling temperature (0.0-2.0)"
 )
-@click.option("--max-tokens", type=int, default=1000, help="Maximum tokens to generate")
+@click.option(
+    "--max-tokens",
+    type=int,
+    default=None,
+    help="Maximum tokens to generate (default: use model's natural limit)",
+)
 @click.option(
     "--no-context",
     is_flag=True,
@@ -247,6 +256,12 @@ def generate(
     type=int,
     default=None,
     help="Process questions in batches (for rate limiting)",
+)
+@click.option(
+    "--max-concurrent",
+    type=int,
+    default=10,
+    help="Maximum concurrent question evaluations (1=serial, 10=default)",
 )
 @click.option(
     "--output-info",
@@ -261,15 +276,16 @@ def evaluate(
     output_dir: Optional[str],
     api_key: Optional[str],
     temperature: float,
-    max_tokens: int,
+    max_tokens: Optional[int],
     no_context: bool,
     batch_size: Optional[int],
+    max_concurrent: int,
     output_info: Optional[str],
-):
+) -> None:
     """Evaluate a model on a benchmark dataset."""
 
     # Initialize directory manager
-    dir_manager = (
+    dir_manager: DirectoryManager = (
         DirectoryManager(output_dir) if output_dir else get_default_directory_manager()
     )
 
@@ -301,12 +317,15 @@ def evaluate(
 
         # Create LLM evaluator
         with console.status("[bold green]Setting up LLM provider..."):
-            provider_config = {
-                "api_key": api_key,
+            provider_config: Dict[str, Any] = {
+                # "api_key": api_key,
                 "temperature": temperature,
-                "max_tokens": max_tokens,
             }
-
+            # Only include max_tokens if explicitly set
+            if max_tokens is not None:
+                provider_config["max_tokens"] = max_tokens
+            if api_key:
+                provider_config["api_key"] = api_key
             try:
                 evaluator = LLMEvaluator.from_model_string(model, **provider_config)
                 console.print(
@@ -323,7 +342,7 @@ def evaluate(
                 console.print(f"[red]Error setting up LLM provider: {str(e)}[/red]")
                 console.print("\n[bold]Available providers and examples:[/bold]")
                 console.print("  OpenAI: --model openai/gpt-4o-mini")
-                console.print("  Anthropic: --model anthropic/claude-3.5-sonnet")
+                console.print("  Anthropic: --model anthropic/claude-3.7-sonnet")
                 console.print("  Gemini: --model gemini/gemini-1.5-flash")
                 console.print("  HuggingFace: --model huggingface/distilgpt2")
                 console.print("\n[bold]Environment variables:[/bold]")
@@ -338,6 +357,7 @@ def evaluate(
 
         if batch_size:
             console.print(f"Batch size: {batch_size}")
+            console.print(f"Concurrent requests: {max_concurrent}")
             # Process in batches
             all_results = []
             for i in range(0, len(questions), batch_size):
@@ -347,7 +367,11 @@ def evaluate(
                 )
 
                 batch_summary = evaluator.evaluate_questions(
-                    batch, kg, include_context=include_context, show_progress=True
+                    batch,
+                    kg,
+                    include_context=include_context,
+                    show_progress=True,
+                    max_concurrent=max_concurrent,
                 )
                 all_results.extend(batch_summary.results)
 
@@ -362,8 +386,13 @@ def evaluate(
 
         else:
             # Process all at once
+            console.print(f"Concurrent requests: {max_concurrent}")
             summary = evaluator.evaluate_questions(
-                questions, kg, include_context=include_context, show_progress=True
+                questions,
+                kg,
+                include_context=include_context,
+                show_progress=True,
+                max_concurrent=max_concurrent,
             )
 
         # Display results
@@ -439,7 +468,7 @@ def evaluate(
     default="table",
     help="Output format",
 )
-def analyze(results_file: str, format: str):
+def analyze(results_file: str, format: str) -> None:
     """Analyze evaluation results."""
 
     console.print(f"[bold blue]Analyzing results: {results_file}[/bold blue]")
@@ -458,7 +487,7 @@ def analyze(results_file: str, format: str):
         sys.exit(1)
 
 
-def _display_results_table(results_data):
+def _display_results_table(results_data: dict) -> None:
     """Display results in a table format."""
     table = Table(title="Evaluation Results")
 
@@ -476,7 +505,7 @@ def _display_results_table(results_data):
 
 @cli.command()
 @click.argument("benchmark_file", type=click.Path(exists=True))
-def info(benchmark_file: str):
+def info(benchmark_file: str) -> None:
     """Show information about a benchmark dataset."""
 
     try:
@@ -509,8 +538,8 @@ def info(benchmark_file: str):
         console.print(f"Total: {len(questions)}")
 
         # Question types breakdown
-        type_counts = {}
-        complexity_counts = {}
+        type_counts: dict = {}
+        complexity_counts: dict = {}
 
         for q in questions:
             q_type = q.get("question_type", "unknown")
@@ -541,10 +570,10 @@ def info(benchmark_file: str):
     default=None,
     help="Base output directory to list (default: ./cgqa_outputs)",
 )
-def list_files(output_dir: Optional[str]):
+def list_files(output_dir: Optional[str]) -> None:
     """List organized benchmark and evaluation files."""
 
-    dir_manager = (
+    dir_manager: DirectoryManager = (
         DirectoryManager(output_dir) if output_dir else get_default_directory_manager()
     )
 
@@ -598,10 +627,10 @@ def list_files(output_dir: Optional[str]):
     is_flag=True,
     help="Show what would be cleaned up without actually deleting",
 )
-def cleanup(max_age: int, output_dir: Optional[str], dry_run: bool):
+def cleanup(max_age: int, output_dir: Optional[str], dry_run: bool) -> None:
     """Clean up old temporary files and organize outputs."""
 
-    dir_manager = (
+    dir_manager: DirectoryManager = (
         DirectoryManager(output_dir) if output_dir else get_default_directory_manager()
     )
 
@@ -661,10 +690,10 @@ def cleanup(max_age: int, output_dir: Optional[str], dry_run: bool):
     default=None,
     help="Base output directory (default: ./cgqa_outputs)",
 )
-def init_structure(output_dir: Optional[str]):
+def init_structure(output_dir: Optional[str]) -> None:
     """Initialize organized directory structure."""
 
-    dir_manager = (
+    dir_manager: DirectoryManager = (
         DirectoryManager(output_dir) if output_dir else get_default_directory_manager()
     )
 
@@ -689,7 +718,7 @@ def init_structure(output_dir: Optional[str]):
 
 
 @cli.command()
-def list_models():
+def list_models() -> None:
     """List available LLM models by provider."""
 
     console.print("[bold]Available LLM Models[/bold]\n")
@@ -719,7 +748,7 @@ def list_models():
 
     console.print("[bold]Usage Examples:[/bold]")
     console.print("  cgqa evaluate benchmark.json --model openai/gpt-4o-mini")
-    console.print("  cgqa evaluate benchmark.json --model anthropic/claude-3.5-sonnet")
+    console.print("  cgqa evaluate benchmark.json --model anthropic/claude-3.7-sonnet")
     console.print("  cgqa evaluate benchmark.json --model gemini/gemini-1.5-flash")
     console.print("  cgqa evaluate benchmark.json --model huggingface/distilgpt2")
 
@@ -729,7 +758,7 @@ def list_models():
     "--model", required=True, help="Model to test (e.g., 'openai/gpt-4o-mini')"
 )
 @click.option("--api-key", help="API key for the provider")
-def test_model(model: str, api_key: Optional[str]):
+def test_model(model: str, api_key: Optional[str]) -> None:
     """Test connection to an LLM provider."""
 
     console.print(f"[bold blue]Testing model: {model}[/bold blue]")
