@@ -67,6 +67,9 @@ leaderboard_checkpoint.json
 checkpoint.json
 *.checkpoint
 
+# Analysis scripts (local only)
+/analysis/ 
+
 # API keys and secrets (just in case)
 .env
 .env.local

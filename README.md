@@ -361,16 +361,16 @@ Challenge LLMs to detect contradictions and reason about inconsistent data.
 - "Are the entities {Marketing, Sales, Engineering} part of a consistent subgraph?"
 - "What type of conflict exists between the 'is_friend_of' and 'is_enemy_of' relationships?"
 
-## Leaderboard & Benchmark Results
+## Benchmark Results
 
-For comprehensive benchmark results across 12 state-of-the-art models, see [BENCHMARK_RESULTS.md](BENCHMARK_RESULTS.md).
+Evaluated 13 state-of-the-art models across 780 evaluations. Performance ranged from 38.0% to 90.6%.
 
-**Latest results (November 10, 2025)**:
-- 720 total evaluations (12 models × 5 reasoning types × 4 complexity levels × 3 runs)
-- Top performers: GPT-5 (79.0%), GPT-5-mini (75.0%), GPT-4.1 (71.8%)
-- Claude Sonnet 4.5 achieves 69.7% accuracy (4th overall)
+**Top performers**:
+- Gemini-3-Pro-Preview: 90.6%
+- Claude Sonnet 4.5: 88.7%
+- Gemini-3-Flash-Preview: 88.4%
 
-To run the full leaderboard benchmark:
+Run the full leaderboard:
 ```bash
 cgqa_bm
 ```
@@ -420,7 +420,7 @@ Performance: ⚠ Struggles with contradiction detection, needs improvement
 
 ChaosGraphQA prevents gaming and memorization through several key design principles:
 
-🎲 **Dynamic Generation**: Each benchmark run creates unique graphs with different entity names, relationships, and structures, even with the same seed and parameters.
+🎲 **Dynamic Generation**: Each benchmark run creates unique graphs with different entity names, relationships, and structures. Using different seeds ensures different graphs, while the same seed guarantees reproducibility.
 
 🔧 **Configurable Complexity**: Four complexity levels automatically adjust graph size, relationship density, and question difficulty, preventing optimization for specific configurations.
 
