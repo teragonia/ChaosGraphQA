@@ -220,7 +220,7 @@ class MultiHopGenerator(BaseGraphGenerator):
                     continue
 
         # Sort by path length and diversity
-        interesting_paths.sort(key=lambda x: (x["length"], len(set(x["relations"]))))  # type: ignore
+        interesting_paths.sort(key=lambda x: (x["length"], len(set(x["relations"]))))  # type: ignore[call-overload]
 
         # Return top paths for question generation
         return interesting_paths[:20]

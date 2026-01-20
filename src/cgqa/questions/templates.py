@@ -110,6 +110,9 @@ class QuestionGenerator:
                 attempts = 0
                 max_attempts = num_questions_per_type * 10
 
+                # Track generated question texts to ensure uniqueness
+                generated_question_texts = set()
+
                 while (
                     questions_generated < num_questions_per_type
                     and attempts < max_attempts
@@ -121,8 +124,12 @@ class QuestionGenerator:
                             kg, template, complexity
                         )
                         if question:
-                            question_set.add_question(question)
-                            questions_generated += 1
+                            # Check if this question text is unique
+                            if question.question_text not in generated_question_texts:
+                                question_set.add_question(question)
+                                generated_question_texts.add(question.question_text)
+                                questions_generated += 1
+                            # If duplicate, we'll try again in next iteration
                     except Exception as e:
                         # Log error but continue
                         print(f"Failed to generate question: {e}")
@@ -557,8 +564,22 @@ class QuestionGenerator:
                         ]
 
                         if terminal_nodes:
-                            # If multiple terminal nodes, pick the first one (arbitrary but consistent)
+                            # Find the terminal node with the longest path from first_event
+                            max_path_length = -1
                             last_event_id = terminal_nodes[0]
+
+                            for terminal in terminal_nodes:
+                                try:
+                                    # Compute shortest path (which is the actual relationship path)
+                                    path = nx.shortest_path(
+                                        temporal_graph, first_event_id, terminal
+                                    )
+                                    if len(path) > max_path_length:
+                                        max_path_length = len(path)
+                                        last_event_id = terminal
+                                except nx.NetworkXNoPath:
+                                    continue
+
                             last_event = kg.get_entity(last_event_id)
                             answer_value = (
                                 last_event.name if last_event else event_names[-1]
@@ -609,16 +630,26 @@ class QuestionGenerator:
     def _check_entities_connected(
         self, kg: KnowledgeGraph, entity_ids: List[str]
     ) -> bool:
-        """Check if a set of entities are connected through consistent relationships."""
+        """Check if entities are connected through CONSISTENT (non-conflicting) relationships.
+
+        This allows transitive connections through intermediate nodes, but ONLY via
+        relationships marked as consistent=True. If a path requires passing through
+        a conflicting relationship (consistent=False), the entities are NOT consistently related.
+
+        This tests whether LLMs can:
+        1. Identify semantic contradictions
+        2. Avoid reasoning through conflicting relationships
+        3. Find paths through only consistent information
+        """
         import networkx as nx
 
-        # Build a graph of only consistent relationships
+        # Build a graph with ALL consistent relationships (allows transitive connections)
         G: nx.Graph = nx.Graph()
         for rel in kg.relationships:
             if rel.properties.get("consistent", True):
-                # Only include relationships between the entities we're checking
-                if rel.source in entity_ids and rel.target in entity_ids:
-                    G.add_edge(rel.source, rel.target)
+                # Include ALL consistent relationships, not just between query entities
+                # This allows finding transitive paths through intermediate nodes
+                G.add_edge(rel.source, rel.target)
 
         # Check if all entities are in the same connected component
         if len(entity_ids) <= 1:
@@ -631,7 +662,7 @@ class QuestionGenerator:
         # Find connected components
         components = list(nx.connected_components(G))
 
-        # Check if all entities are in the same component
+        # Check if all entities are in the same component (via consistent edges only)
         entity_set = set(entity_ids)
         for component in components:
             if entity_set.issubset(component):
@@ -1004,7 +1035,10 @@ class QuestionGenerator:
             # that have consistent relationships with the named entities in the question
             if template.answer_type == AnswerType.NUMERIC:
                 # Use a subset of entities from the subgraph for the question (3 entities)
-                question_entities = list(chosen_subgraph["entities"])[:3]
+                # BUGFIX: Randomly sample entities instead of always taking first 3
+                entities_list = list(chosen_subgraph["entities"])
+                sample_size = min(3, len(entities_list))
+                question_entities = self.rng.sample(entities_list, sample_size)
                 involved_entities = set(
                     question_entities
                 )  # Start with the named entities
@@ -1053,8 +1087,20 @@ class QuestionGenerator:
 
             else:
                 # For boolean questions, check if the selected entities are actually connected
-                # within the consistent subgraph
-                question_entities = list(chosen_subgraph["entities"])[:3]
+                # CRITICAL: To get mix of True/False answers, sometimes select from consistent subgraph
+                # (answer=True) and sometimes select across all entities including those with conflicts (answer may be False)
+
+                # 50% chance to select from consistent subgraph only (likely True)
+                # 50% chance to select from all entities (may include conflicts, likely False)
+                if self.rng.random() < 0.5:
+                    # Select from consistent subgraph only
+                    entities_list = list(chosen_subgraph["entities"])
+                else:
+                    # Select from ALL entities to include potential conflicts
+                    entities_list = list(kg.entities.keys())
+
+                sample_size = min(3, len(entities_list))
+                question_entities = self.rng.sample(entities_list, sample_size)
                 entity_names = []
                 for eid in question_entities:
                     entity = kg.get_entity(eid)
@@ -1081,7 +1127,7 @@ class QuestionGenerator:
                     if entity_subgraph_connected:
                         explanation = f"Yes, the entities {', '.join(entity_names)} are connected through consistent relationships"
                     else:
-                        explanation = f"No, the entities {', '.join(entity_names)} are not directly connected through consistent relationships"
+                        explanation = f"No, the entities {', '.join(entity_names)} are not connected through consistent relationships"
                 else:
                     # For other answer types, assume consistent subgraph exists
                     answer_value = True
@@ -1383,7 +1429,7 @@ class ConflictingTemplates:
                 answer_type=AnswerType.BOOLEAN,
             ),
             QuestionTemplate(
-                template="Are {entity_set} consistently related?",
+                template="Are {entity_set} connected through consistent (non-conflicting) relationships?",
                 question_type=QuestionType.CONFLICTING,
                 complexity_level=1,
                 required_graph_features=["consistent_subgraphs"],
@@ -1404,7 +1450,7 @@ class ConflictingTemplates:
                 answer_type=AnswerType.BOOLEAN,
             ),
             QuestionTemplate(
-                template="Are the entities {entity_set} part of a consistent subgraph?",
+                template="Can {entity_set} be connected without passing through conflicting relationships?",
                 question_type=QuestionType.CONFLICTING,
                 complexity_level=2,
                 required_graph_features=["consistent_subgraphs"],

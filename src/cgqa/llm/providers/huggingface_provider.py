@@ -107,7 +107,7 @@ class HuggingFaceProvider(BaseLLMProvider):
 
             # Move to device if not using device_map
             if device == "cpu":
-                self.model = self.model.to(device)  # type: ignore
+                self.model = self.model.to(device)
 
             self.device = device
 
@@ -130,9 +130,13 @@ class HuggingFaceProvider(BaseLLMProvider):
             request_params = {
                 "model": self.config.model_name,
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
                 "temperature": kwargs.get("temperature", self.config.temperature),
             }
+
+            # Only include max_tokens if explicitly set (not None)
+            max_tokens_value = kwargs.get("max_tokens", self.config.max_tokens)
+            if max_tokens_value is not None:
+                request_params["max_tokens"] = max_tokens_value
 
             # Add additional parameters
             for key, value in kwargs.items():
@@ -191,7 +195,6 @@ class HuggingFaceProvider(BaseLLMProvider):
 
             # Generation parameters
             generation_kwargs = {
-                "max_new_tokens": kwargs.get("max_tokens", self.config.max_tokens),
                 "temperature": kwargs.get("temperature", self.config.temperature),
                 "do_sample": (
                     True
@@ -200,6 +203,11 @@ class HuggingFaceProvider(BaseLLMProvider):
                 ),
                 "pad_token_id": self.tokenizer.eos_token_id,
             }
+
+            # Only include max_new_tokens if explicitly set (not None)
+            max_tokens_value = kwargs.get("max_tokens", self.config.max_tokens)
+            if max_tokens_value is not None:
+                generation_kwargs["max_new_tokens"] = max_tokens_value
 
             # Add additional parameters
             for key, value in kwargs.items():

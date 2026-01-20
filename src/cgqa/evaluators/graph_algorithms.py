@@ -89,15 +89,15 @@ class GraphAlgorithms:
     def path_exists(self, start: str, end: str) -> bool:
         """Check if a path exists between two entities."""
         try:
-            return nx.has_path(self.nx_graph, start, end)
+            return bool(nx.has_path(self.nx_graph, start, end))
         except nx.NodeNotFound:
             return False
 
     def get_path_length(self, start: str, end: str) -> Optional[int]:
         """Get shortest path length between two entities."""
         try:
-            retval: Optional[int] = nx.shortest_path_length(self.nx_graph, start, end)
-            return retval
+            path_length = nx.shortest_path_length(self.nx_graph, start, end)
+            return int(path_length)
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             return None
 

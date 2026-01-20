@@ -11,6 +11,9 @@ class GeminiProvider(BaseLLMProvider):
 
     # Verified working Gemini models (1M input, 65K output)
     SUPPORTED_MODELS = [
+        # Gemini 3.0 family - Preview models
+        "gemini-3-flash-preview",  # Gemini 3 Flash preview
+        "gemini-3-pro-preview",  # Gemini 3 Pro preview
         # Gemini 2.5 family - Latest generation (Jan 2025 cutoff)
         "gemini-2.5-pro",  # Complex reasoning, long context
         "gemini-2.5-flash",  # Best price-performance
@@ -63,20 +66,16 @@ class GeminiProvider(BaseLLMProvider):
         # This prevents false positives on technical/academic content
         self.safety_settings = [
             types.SafetySetting(
-                category='HARM_CATEGORY_HARASSMENT',
-                threshold='BLOCK_NONE'
+                category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"
             ),
             types.SafetySetting(
-                category='HARM_CATEGORY_HATE_SPEECH',
-                threshold='BLOCK_NONE'
+                category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"
             ),
             types.SafetySetting(
-                category='HARM_CATEGORY_SEXUALLY_EXPLICIT',
-                threshold='BLOCK_NONE'
+                category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"
             ),
             types.SafetySetting(
-                category='HARM_CATEGORY_DANGEROUS_CONTENT',
-                threshold='BLOCK_NONE'
+                category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"
             ),
         ]
 
@@ -89,11 +88,33 @@ class GeminiProvider(BaseLLMProvider):
         try:
             from google.genai import types
 
+            # Check if this is a Gemini 3 reasoning model
+            is_gemini_3 = self.model_name.startswith("gemini-3")
+
+            # Set temperature - Gemini 3 uses 1.0 by default, others use config value
+            if is_gemini_3 and "temperature" not in kwargs:
+                temperature = 1.0
+            else:
+                temperature = kwargs.get("temperature", self.config.temperature)
+
             # Create generation config with overrides
             config_kwargs = {
-                "temperature": kwargs.get("temperature", self.config.temperature),
+                "temperature": temperature,
                 "safety_settings": self.safety_settings,
             }
+
+            # Add thinking configuration for Gemini 3 models
+            if is_gemini_3:
+                # Default: use "low" for most models (matching OpenAI reasoning model pattern)
+                thinking_level = "low"
+
+                # Flash models use "minimal" for faster responses (like gpt-5-mini/nano)
+                if "flash" in self.model_name:
+                    thinking_level = "minimal"
+
+                config_kwargs["thinking_config"] = types.ThinkingConfig(
+                    thinking_level=thinking_level
+                )
 
             # Only set max_output_tokens if explicitly provided
             # Check if max_tokens is in kwargs first, otherwise use config
@@ -140,7 +161,10 @@ class GeminiProvider(BaseLLMProvider):
                     if hasattr(response, "candidates") and response.candidates:
                         for candidate in response.candidates:
                             if hasattr(candidate, "content") and candidate.content:
-                                if hasattr(candidate.content, "parts") and candidate.content.parts:
+                                if (
+                                    hasattr(candidate.content, "parts")
+                                    and candidate.content.parts
+                                ):
                                     for part in candidate.content.parts:
                                         if hasattr(part, "text") and part.text:
                                             response_text += part.text
@@ -287,6 +311,9 @@ class GeminiProvider(BaseLLMProvider):
     def _get_context_window(self) -> int:
         """Get context window size for the model."""
         context_windows = {
+            # Gemini 3.0 family - 1M input tokens (preview models)
+            "gemini-3-flash-preview": 1048576,
+            "gemini-3-pro-preview": 1048576,
             # Gemini 2.5 family - 1M input tokens
             "gemini-2.5-pro": 1048576,
             "gemini-2.5-flash": 1048576,
@@ -311,6 +338,9 @@ class GeminiProvider(BaseLLMProvider):
     def _get_training_cutoff(self) -> str:
         """Get training data cutoff for the model."""
         cutoffs = {
+            # Gemini 3.0 family - Preview models
+            "gemini-3-flash-preview": "January 2025",
+            "gemini-3-pro-preview": "January 2025",
             # Gemini 2.5 family - Knowledge cutoff: January 2025
             "gemini-2.5-pro": "January 2025",
             "gemini-2.5-flash": "January 2025",

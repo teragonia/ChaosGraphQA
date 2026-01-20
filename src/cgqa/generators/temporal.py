@@ -379,32 +379,62 @@ class TemporalGenerator(BaseGraphGenerator):
                     continue
 
     def _find_temporal_sequences(self, kg: KnowledgeGraph) -> List[Dict[str, Any]]:
-        """Find temporal sequences for question generation."""
+        """Find temporal sequences by following relationship chains (before/causes).
+
+        This finds actual paths through the temporal/causal relationship graph,
+        not just chronologically consecutive events.
+        """
         sequences = []
 
-        # Get all events sorted by time
-        events = []
-        for entity in kg.entities.values():
-            if entity.entity_type == "event":
-                events.append(entity)
+        # Build temporal/causal graph with both "before" and "causes" relationships
+        temporal_graph: nx.DiGraph = nx.DiGraph()
+        for rel in kg.relationships:
+            if rel.relation_type in ["before", "causes"]:
+                temporal_graph.add_edge(rel.source, rel.target)
 
-        events.sort(key=lambda e: e.properties["start_time"])
+        # Find longest paths from each event node
+        for source in temporal_graph.nodes():
+            # Use BFS to find all reachable nodes and their distances
+            try:
+                # Get all paths from this source
+                paths_from_source = []
+                for target in temporal_graph.nodes():
+                    if source != target and nx.has_path(temporal_graph, source, target):
+                        try:
+                            # Get shortest path (we want actual chains, not all possible paths)
+                            path = nx.shortest_path(temporal_graph, source, target)
+                            if len(path) >= 2:  # At least 2 nodes
+                                paths_from_source.append(path)
+                        except nx.NetworkXNoPath:
+                            continue
 
-        # Create sequences of consecutive events
-        for start_idx in range(len(events)):
-            for end_idx in range(start_idx + 2, min(start_idx + 5, len(events) + 1)):
-                sequence = events[start_idx:end_idx]
+                # For each source, keep the longest path
+                if paths_from_source:
+                    longest_path = max(paths_from_source, key=len)
 
-                sequences.append(
-                    {
-                        "events": [e.id for e in sequence],
-                        "event_names": [e.name for e in sequence],
-                        "start_time": sequence[0].properties["start_time"],
-                        "end_time": sequence[-1].properties["end_time"],
-                        "length": len(sequence),
-                    }
-                )
+                    # Get entity details - filter out None values
+                    path_entities_raw = [kg.get_entity(eid) for eid in longest_path]
+                    path_entities = [e for e in path_entities_raw if e is not None]
 
+                    if len(path_entities) == len(longest_path):
+                        sequences.append(
+                            {
+                                "events": longest_path,
+                                "event_names": [e.name for e in path_entities],
+                                "start_time": path_entities[0].properties.get(
+                                    "start_time", ""
+                                ),
+                                "end_time": path_entities[-1].properties.get(
+                                    "end_time", ""
+                                ),
+                                "length": len(longest_path),
+                            }
+                        )
+            except Exception:
+                continue
+
+        # Sort by length (longest first) and limit
+        sequences.sort(key=lambda s: s["length"], reverse=True)
         return sequences[:10]  # Limit to avoid too much metadata
 
     def _find_causal_chains(self, kg: KnowledgeGraph) -> List[Dict[str, Any]]:

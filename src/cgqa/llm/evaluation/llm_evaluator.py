@@ -1,7 +1,9 @@
 """LLM evaluation engine for ChaosGraphQA."""
 
 import json
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -89,6 +91,7 @@ class LLMEvaluator:
         kg: KnowledgeGraph,
         include_context: bool = True,
         show_progress: bool = True,
+        max_concurrent: int = 10,
     ) -> EvaluationSummary:
         """Evaluate a list of questions with the LLM.
 
@@ -97,31 +100,174 @@ class LLMEvaluator:
             kg: Knowledge graph containing the context
             include_context: Whether to include graph context in prompts
             show_progress: Whether to show progress information
+            max_concurrent: Maximum concurrent requests (1 = serial, >1 = concurrent)
 
         Returns:
             EvaluationSummary with all results
         """
         start_time = time.time()
         results = []
+        results_lock = threading.Lock()
 
-        if show_progress:
-            try:
-                from rich.progress import track
+        # Concurrent execution path
+        if max_concurrent > 1:
+            if show_progress:
+                try:
+                    from rich.progress import (
+                        BarColumn,
+                        Progress,
+                        SpinnerColumn,
+                        TextColumn,
+                        TimeElapsedColumn,
+                        TimeRemainingColumn,
+                    )
 
-                question_iter = track(questions, description="Evaluating questions...")
-            except ImportError:
-                question_iter = questions
-                if show_progress:
-                    print(f"Evaluating {len(questions)} questions...")
+                    with Progress(
+                        SpinnerColumn(),
+                        TextColumn("[progress.description]{task.description}"),
+                        BarColumn(),
+                        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                        TextColumn("({task.completed}/{task.total})"),
+                        TimeElapsedColumn(),
+                        TimeRemainingColumn(),
+                    ) as progress:
+                        task = progress.add_task(
+                            "Evaluating questions...", total=len(questions)
+                        )
+
+                        with ThreadPoolExecutor(max_workers=max_concurrent) as executor:
+                            # Submit all questions
+                            future_to_question = {
+                                executor.submit(
+                                    self.evaluate_single_question,
+                                    q,
+                                    kg,
+                                    include_context,
+                                ): q
+                                for q in questions
+                            }
+
+                            # Collect results as they complete
+                            for future in as_completed(future_to_question):
+                                try:
+                                    result = future.result()
+                                except Exception as e:
+                                    # Create error result for failed thread
+                                    question = future_to_question[future]
+                                    result = EvaluationResult(
+                                        question_id=question.id,
+                                        question_text=question.question_text,
+                                        question_type=question.question_type,
+                                        complexity_level=question.complexity_level,
+                                        prompt="",
+                                        llm_response="",
+                                        response_time=0.0,
+                                        ground_truth_answer=question.ground_truth.value,
+                                        ground_truth_explanation="",
+                                        is_correct=False,
+                                        score=0.0,
+                                        validation_explanation="Thread execution error",
+                                        error=str(e),
+                                        error_type=type(e).__name__,
+                                    )
+
+                                with results_lock:
+                                    results.append(result)
+                                progress.update(task, advance=1)
+
+                except ImportError:
+                    # Fallback without rich library
+                    with ThreadPoolExecutor(max_workers=max_concurrent) as executor:
+                        future_to_question = {
+                            executor.submit(
+                                self.evaluate_single_question, q, kg, include_context
+                            ): q
+                            for q in questions
+                        }
+
+                        completed = 0
+                        for future in as_completed(future_to_question):
+                            try:
+                                result = future.result()
+                            except Exception as e:
+                                question = future_to_question[future]
+                                result = EvaluationResult(
+                                    question_id=question.id,
+                                    question_text=question.question_text,
+                                    question_type=question.question_type,
+                                    complexity_level=question.complexity_level,
+                                    prompt="",
+                                    llm_response="",
+                                    response_time=0.0,
+                                    ground_truth_answer=question.ground_truth.value,
+                                    ground_truth_explanation="",
+                                    is_correct=False,
+                                    score=0.0,
+                                    validation_explanation="Thread execution error",
+                                    error=str(e),
+                                    error_type=type(e).__name__,
+                                )
+
+                            with results_lock:
+                                results.append(result)
+                            completed += 1
+                            print(f"Completed {completed}/{len(questions)} questions")
+            else:
+                # No progress display
+                with ThreadPoolExecutor(max_workers=max_concurrent) as executor:
+                    futures = [
+                        executor.submit(
+                            self.evaluate_single_question, q, kg, include_context
+                        )
+                        for q in questions
+                    ]
+                    for future in as_completed(futures):
+                        try:
+                            result = future.result()
+                        except Exception as e:
+                            # Create minimal error result
+                            result = EvaluationResult(
+                                question_id="unknown",
+                                question_text="",
+                                question_type="",
+                                complexity_level=0,
+                                prompt="",
+                                llm_response="",
+                                response_time=0.0,
+                                ground_truth_answer="",
+                                ground_truth_explanation="",
+                                is_correct=False,
+                                score=0.0,
+                                validation_explanation="Thread execution error",
+                                error=str(e),
+                                error_type=type(e).__name__,
+                            )
+
+                        with results_lock:
+                            results.append(result)
+
+        # Serial execution path (backward compatible)
         else:
-            question_iter = questions
+            if show_progress:
+                try:
+                    from rich.progress import track
 
-        for i, question in enumerate(question_iter):
-            if show_progress and "track" not in locals():
-                print(f"Question {i+1}/{len(questions)}")
+                    question_iter = track(
+                        questions, description="Evaluating questions..."
+                    )
+                except ImportError:
+                    question_iter = questions
+                    if show_progress:
+                        print(f"Evaluating {len(questions)} questions...")
+            else:
+                question_iter = questions
 
-            result = self.evaluate_single_question(question, kg, include_context)
-            results.append(result)
+            for i, question in enumerate(question_iter):
+                if show_progress and "track" not in locals():
+                    print(f"Question {i+1}/{len(questions)}")
+
+                result = self.evaluate_single_question(question, kg, include_context)
+                results.append(result)
 
         # Create summary
         evaluation_time = time.time() - start_time

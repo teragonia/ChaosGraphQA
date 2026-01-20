@@ -100,10 +100,16 @@ class AnthropicProvider(BaseLLMProvider):
     def _make_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Make a request to Anthropic API."""
 
+        # Anthropic requires max_tokens to be set (not None)
+        # Use provided value, config value, or default to 4096
+        max_tokens_value = kwargs.get("max_tokens", self.config.max_tokens)
+        if max_tokens_value is None:
+            max_tokens_value = 4096  # Reasonable default for Anthropic
+
         # Prepare request parameters
         request_params = {
             "model": self.config.model_name,
-            "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
+            "max_tokens": max_tokens_value,
             "temperature": kwargs.get("temperature", self.config.temperature),
             "messages": [{"role": "user", "content": prompt}],
         }

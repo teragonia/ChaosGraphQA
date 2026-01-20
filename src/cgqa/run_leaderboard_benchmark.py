@@ -9,11 +9,32 @@ import os
 import statistics
 import subprocess
 import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Deque, Dict, List, Optional, Tuple, TypedDict
+
+try:
+    from rich.console import Console, Group
+    from rich.layout import Layout
+    from rich.live import Live
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.text import Text
+
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+
+
+class ModelProgress(TypedDict):
+    """Type definition for model progress tracking."""
+
+    completed: int
+    total: int
+    completion_time: Optional[float]
 
 # Models to benchmark
 MODELS = [
@@ -25,9 +46,11 @@ MODELS = [
     # OpenAI models
     "openai/gpt-5.2",
     "openai/gpt-5-mini",
+    "openai/gpt-5-nano",
     "openai/gpt-4o",
     # Gemini models
-    "gemini/gemini-2.5-pro",
+    "gemini/gemini-3-flash-preview",
+    "gemini/gemini-3-pro-preview",
     "gemini/gemini-2.5-flash",
     "gemini/gemini-2.0-flash",
     # HuggingFace models
@@ -44,13 +67,210 @@ REASONING_TYPES = [
 ]
 
 COMPLEXITY_LEVELS = [1, 2, 3, 4]
-NUM_QUESTIONS = 20  # Questions per complexity level
+NUM_QUESTIONS = 10  # Questions per complexity level
 NUM_RUNS = 3  # Run each configuration 3 times
 
 # Timeout configuration: 3 minutes per question = 60 minutes for 20 questions
-TIMEOUT_PER_EVALUATION = 3600  # 60 minutes (3 min/question × 20 questions)
+TIMEOUT_PER_EVALUATION = 600  # 10 minutes (3 min/question × 10 questions)
+MAX_RETRIES = 2  # Number of times to retry a timed-out evaluation
 CHECKPOINT_INTERVAL = 5  # Save checkpoint every N model completions
 CHECKPOINT_FILE = "leaderboard_checkpoint.json"  # Checkpoint filename
+
+
+class DisplayManager:
+    """Manages the display with fixed progress bars at bottom and scrolling results above."""
+
+    def __init__(self, models: List[str], total_tasks: int, start_time: float):
+        self.models = models
+        self.total_tasks = total_tasks
+        self.start_time = start_time
+        self.completed_tasks_count = 0
+        self.model_progress: Dict[str, ModelProgress] = {
+            model: {"completed": 0, "total": 0, "completion_time": None}
+            for model in models
+        }
+        # Scale results log with number of models: keep it readable but not too small
+        results_log_size = max(8, len(models) // 2)
+        self.results_log: Deque[Tuple[str, str]] = deque(maxlen=results_log_size)
+        self.lock = Lock()
+        self.console = Console() if RICH_AVAILABLE else None
+
+    def add_result(
+        self,
+        model: str,
+        reasoning_type: str,
+        complexity: int,
+        run_num: int,
+        accuracy: float,
+        score: float,
+    ) -> None:
+        """Add a successful result to the log."""
+        with self.lock:
+            model_short = model.split("/")[-1].replace(".", "_").replace("-", "_")
+            result_line = (
+                f"✓ [{model_short}] {reasoning_type} C{complexity} Run{run_num}: "
+                f"Acc={accuracy:.2%}, Score={score:.3f}"
+            )
+            self.results_log.append(("success", result_line))
+            self.completed_tasks_count += 1
+
+    def add_error(self, model: str, message: str) -> None:
+        """Add an error message to the log."""
+        with self.lock:
+            model_short = model.split("/")[-1].replace(".", "_").replace("-", "_")
+            result_line = f"✗ [{model_short}] {message}"
+            self.results_log.append(("error", result_line))
+
+    def add_info(self, message: str) -> None:
+        """Add an info message to the log."""
+        with self.lock:
+            self.results_log.append(("info", message))
+
+    def update_model_progress(self, model: str, completed: int, total: int) -> None:
+        """Update progress for a specific model."""
+        with self.lock:
+            self.model_progress[model]["completed"] = completed
+            self.model_progress[model]["total"] = total
+
+    def increment_model_progress(self, model: str) -> None:
+        """Increment completed count for a model."""
+        with self.lock:
+            self.model_progress[model]["completed"] += 1
+
+    def mark_model_complete(self, model: str) -> None:
+        """Mark a model as complete and record its completion time."""
+        with self.lock:
+            elapsed = time.time() - self.start_time
+            self.model_progress[model]["completion_time"] = elapsed
+
+    def set_model_totals(self, model_tasks: Dict[str, List]) -> None:
+        """Set total tasks for each model."""
+        with self.lock:
+            for model, tasks in model_tasks.items():
+                self.model_progress[model]["total"] = len(tasks)
+
+    def render(self) -> Optional[Layout]:
+        """Render the full display layout."""
+        if not RICH_AVAILABLE:
+            return None
+
+        layout = Layout()
+
+        # Calculate dynamic ratio based on number of models
+        # Progress needs: 3 (borders/header) + len(models) lines
+        # Results gets remaining space, minimum 5 lines for readability
+        progress_ratio = 3 + len(self.models)
+        results_ratio = max(
+            5, len(self.models) // 2
+        )  # Scale with models but keep readable
+
+        layout.split_column(
+            Layout(name="results", ratio=results_ratio),
+            Layout(name="progress", ratio=progress_ratio),
+        )
+
+        # Render results section
+        with self.lock:
+            results_lines = []
+            for result_type, line in self.results_log:
+                if result_type == "success":
+                    results_lines.append(Text(line, style="green"))
+                elif result_type == "error":
+                    results_lines.append(Text(line, style="red"))
+                else:
+                    results_lines.append(Text(line, style="cyan"))
+
+            if not results_lines:
+                results_lines.append(Text("Waiting for results...", style="dim"))
+
+            results_panel = Panel(
+                Group(*results_lines),
+                title="[bold cyan]Recent Results[/bold cyan]",
+                border_style="cyan",
+                padding=(1, 2),
+            )
+            layout["results"].update(results_panel)
+
+            # Render progress section
+            elapsed = time.time() - self.start_time
+            rate = self.completed_tasks_count / elapsed if elapsed > 0 else 0
+            remaining_time = (
+                (self.total_tasks - self.completed_tasks_count) / rate
+                if rate > 0
+                else 0
+            )
+
+            progress_table = Table(
+                show_header=True, header_style="bold magenta", box=None, padding=(0, 1)
+            )
+            progress_table.add_column("Model", style="cyan", width=40)
+            progress_table.add_column("Progress", width=25)
+            progress_table.add_column("Status", width=18)
+
+            # Sort models by progress
+            sorted_models = sorted(
+                self.models,
+                key=lambda m: (
+                    self.model_progress[m]["completed"]
+                    / max(self.model_progress[m]["total"], 1)
+                ),
+                reverse=True,
+            )
+
+            for model in sorted_models:
+                model_short = model.split("/")[-1]
+                prog = self.model_progress[model]
+
+                # Always show all models, even if total is 0
+                if prog["total"] == 0:
+                    # Model has no tasks assigned
+                    progress_table.add_row(
+                        model_short, "[░░░░░░░░░░░░░░░] 0/0 (0.0%)", "⏭️  Skipped"
+                    )
+                else:
+                    pct = prog["completed"] / prog["total"] * 100
+                    bar_width = 15
+                    filled = int(bar_width * prog["completed"] / prog["total"])
+                    bar = "█" * filled + "░" * (bar_width - filled)
+
+                    if prog["completed"] == prog["total"]:
+                        # Model is complete - show completion time
+                        if prog["completion_time"] is not None:
+                            completion_mins = prog["completion_time"] / 60
+                            status = f"✅ Done ({completion_mins:.1f}m)"
+                        else:
+                            status = "✅ Complete"
+                    else:
+                        status = "🔄 Running"
+
+                    progress_table.add_row(
+                        model_short,
+                        f"[{bar}] {prog['completed']}/{prog['total']} ({pct:.1f}%)",
+                        status,
+                    )
+
+            # Overall stats
+            overall_pct = (
+                (self.completed_tasks_count / self.total_tasks * 100)
+                if self.total_tasks > 0
+                else 0
+            )
+            progress_title = (
+                f"[bold magenta]Overall Progress[/bold magenta]: "
+                f"{self.completed_tasks_count}/{self.total_tasks} ({overall_pct:.1f}%) | "
+                f"⏱️  {elapsed/60:.1f}min | "
+                f"ETA: {remaining_time/60:.1f}min"
+            )
+
+            progress_panel = Panel(
+                progress_table,
+                title=progress_title,
+                border_style="magenta",
+                padding=(1, 2),
+            )
+            layout["progress"].update(progress_panel)
+
+        return layout
 
 
 def load_results(results_file: str) -> Optional[dict]:
@@ -75,7 +295,7 @@ def run_single_evaluation_with_benchmark(
     complexity: int,
     run_num: int,
     benchmark_file: str,
-    print_lock: Optional[Lock] = None,
+    display_manager: Optional["DisplayManager"] = None,
 ) -> Optional[dict]:
     """Run evaluation for a model using a pre-generated benchmark file.
 
@@ -85,15 +305,12 @@ def run_single_evaluation_with_benchmark(
         complexity: Complexity level (1-4)
         run_num: Run number (1-3)
         benchmark_file: Path to the shared benchmark file
-        print_lock: Thread lock for printing
+        display_manager: Display manager for output
 
     Returns:
         Dictionary with evaluation results, or None on failure
     """
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     model_short = model.split("/")[-1].replace(".", "_").replace("-", "_")
-
-    # Uniform timeout: 3 minutes per question × 20 questions = 60 minutes total
     timeout = TIMEOUT_PER_EVALUATION
 
     # Create structured output directories
@@ -103,52 +320,87 @@ def run_single_evaluation_with_benchmark(
     )
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Evaluate with model using the shared benchmark
-    results_file = str(output_dir / f"results_run{run_num}_{timestamp}.json")
+    # Retry logic for timeouts
+    for attempt in range(MAX_RETRIES + 1):
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        results_file = str(output_dir / f"results_run{run_num}_{timestamp}.json")
 
-    eval_cmd = [
-        "cgqa",
-        "evaluate",
-        benchmark_file,
-        "--model",
-        model,
-        "--output",
-        results_file,
-    ]
+        eval_cmd = [
+            "cgqa",
+            "evaluate",
+            benchmark_file,
+            "--model",
+            model,
+            "--output",
+            results_file,
+        ]
 
-    try:
-        subprocess.run(
-            eval_cmd, check=True, capture_output=True, text=True, timeout=timeout
-        )
+        try:
+            subprocess.run(
+                eval_cmd, check=True, capture_output=True, text=True, timeout=timeout
+            )
 
-        # Load results
-        results = load_results(results_file)
+            # Load results
+            results = load_results(results_file)
 
-        if results and print_lock:
-            with print_lock:
-                print(
-                    f"      ✓ [{model_short}] {reasoning_type} C{complexity} Run{run_num}: "
-                    f"Acc={results['accuracy']:.2%}, Score={results['average_score']:.3f}"
+            if results and display_manager:
+                if attempt > 0:
+                    # Indicate this was a retry that succeeded
+                    display_manager.add_result(
+                        model,
+                        reasoning_type,
+                        complexity,
+                        run_num,
+                        results["accuracy"],
+                        results["average_score"],
+                    )
+                    display_manager.add_info(
+                        f"✓ [{model_short}] Retry succeeded on attempt {attempt + 1} ({reasoning_type} C{complexity} Run{run_num})"
+                    )
+                else:
+                    display_manager.add_result(
+                        model,
+                        reasoning_type,
+                        complexity,
+                        run_num,
+                        results["accuracy"],
+                        results["average_score"],
+                    )
+
+            return results
+
+        except subprocess.TimeoutExpired:
+            # Clean up results file on timeout
+            Path(results_file).unlink(missing_ok=True)
+
+            if attempt < MAX_RETRIES:
+                # Not the last attempt - retry
+                if display_manager:
+                    display_manager.add_info(
+                        f"⏱️  [{model_short}] Timeout on attempt {attempt + 1}/{MAX_RETRIES + 1}, retrying... ({reasoning_type} C{complexity} Run{run_num})"
+                    )
+                continue
+            else:
+                # Last attempt failed - give up
+                if display_manager:
+                    display_manager.add_error(
+                        model,
+                        f"Evaluation timed out after {MAX_RETRIES + 1} attempts ({reasoning_type} C{complexity} Run{run_num})",
+                    )
+                return None
+
+        except subprocess.CalledProcessError as e:
+            # Don't retry on non-timeout errors
+            if display_manager:
+                display_manager.add_error(
+                    model,
+                    f"Evaluation failed: {reasoning_type} C{complexity} Run{run_num} - {str(e.stderr[:100])}",
                 )
+            # Clean up results file on failure
+            Path(results_file).unlink(missing_ok=True)
+            return None
 
-        return results
-
-    except subprocess.TimeoutExpired:
-        if print_lock:
-            with print_lock:
-                print(
-                    f"      ✗ [{model_short}] Evaluation timed out after {timeout}s (complexity {complexity})"
-                )
-        # Clean up results file on timeout
-        Path(results_file).unlink(missing_ok=True)
-        return None
-    except subprocess.CalledProcessError as e:
-        if print_lock:
-            with print_lock:
-                print(f"      ✗ [{model_short}] Evaluation failed: {e.stderr[:100]}")
-        # Clean up results file on failure
-        Path(results_file).unlink(missing_ok=True)
-        return None
+    return None
 
 
 def calculate_statistics(runs: List[dict]) -> Optional[dict]:
@@ -260,7 +512,7 @@ def generate_shared_benchmark(
     complexity: int,
     run_num: int,
     num_questions: int,
-    print_lock: Lock,
+    display_manager: Optional["DisplayManager"] = None,
 ) -> Optional[str]:
     """Generate a shared benchmark file for a specific config.
 
@@ -296,14 +548,17 @@ def generate_shared_benchmark(
 
     try:
         subprocess.run(gen_cmd, check=True, capture_output=True, text=True)
-        with print_lock:
-            print(
-                f"      📝 Generated benchmark: {reasoning_type} C{complexity} Run{run_num}"
+        if display_manager:
+            display_manager.add_info(
+                f"📝 Generated benchmark: {reasoning_type} C{complexity} Run{run_num}"
             )
         return benchmark_file
     except subprocess.CalledProcessError as e:
-        with print_lock:
-            print(f"      ✗ Benchmark generation failed: {e.stderr[:100]}")
+        if display_manager:
+            display_manager.add_error(
+                "Benchmark",
+                f"Generation failed: {reasoning_type} C{complexity} Run{run_num} - {e.stderr[:100]}",
+            )
         return None
 
 
@@ -312,17 +567,19 @@ def run_model_tasks(
     tasks: List[Dict],
     benchmark_files: Dict[str, str],
     completed_tasks: set,
-    print_lock: Lock,
+    display_manager: Optional["DisplayManager"],
     results_callback: Any,
 ) -> List[dict]:
-    """Run all tasks for a single model sequentially.
+    """Run all tasks for a single model with concurrent re-runs.
+
+    Groups tasks by (reasoning_type, complexity) and runs all 3 re-runs concurrently.
 
     Args:
         model: Model identifier
         tasks: List of task dictionaries to run
         benchmark_files: Dict mapping task_key to benchmark file path
         completed_tasks: Set of already completed task IDs
-        print_lock: Thread lock for printing
+        display_manager: Display manager for output
         results_callback: Function to call when a task completes
 
     Returns:
@@ -331,48 +588,81 @@ def run_model_tasks(
     model_short = model.split("/")[-1].replace(".", "_").replace("-", "_")
     results = []
 
-    with print_lock:
-        print(f"\n🚀 [{model_short}] Starting {len(tasks)} tasks")
+    if display_manager:
+        display_manager.add_info(
+            f"🚀 [{model_short}] Starting {len(tasks)} tasks (3-way concurrent re-runs)"
+        )
 
+    # Group tasks by (reasoning_type, complexity)
+    from collections import defaultdict
+
+    task_groups = defaultdict(list)
     for task in tasks:
-        # Skip if already completed
-        if get_task_id(task) in completed_tasks:
-            with print_lock:
-                print(
-                    f"      ⏭️  [{model_short}] Skipped: {task['reasoning_type']} C{task['complexity']} Run{task['run_num']}"
+        key = (task["reasoning_type"], task["complexity"])
+        task_groups[key].append(task)
+
+    # Process each group with concurrent re-runs
+    for (reasoning_type, complexity), group_tasks in task_groups.items():
+        # Filter out already completed tasks
+        pending_tasks = [
+            task for task in group_tasks if get_task_id(task) not in completed_tasks
+        ]
+
+        if not pending_tasks:
+            if display_manager:
+                display_manager.add_info(
+                    f"⏭️  [{model_short}] Skipped: {reasoning_type} C{complexity} (all runs completed)"
                 )
             continue
 
-        # Get benchmark file for this config
-        task_key = (
-            f"{task['reasoning_type']}_c{task['complexity']}_run{task['run_num']}"
-        )
-        benchmark_file = benchmark_files.get(task_key)
+        if display_manager:
+            display_manager.add_info(
+                f"🔄 [{model_short}] Running {reasoning_type} C{complexity}: {len(pending_tasks)} re-runs concurrently"
+            )
 
-        if not benchmark_file:
-            with print_lock:
-                print(f"      ✗ [{model_short}] No benchmark for {task_key}")
-            continue
+        # Run all re-runs for this group concurrently
+        with ThreadPoolExecutor(max_workers=len(pending_tasks)) as executor:
+            futures = {}
+            for task in pending_tasks:
+                task_key = f"{task['reasoning_type']}_c{task['complexity']}_run{task['run_num']}"
+                benchmark_file = benchmark_files.get(task_key)
 
-        # Run evaluation
-        result = run_single_evaluation_with_benchmark(
-            model,
-            task["reasoning_type"],
-            task["complexity"],
-            task["run_num"],
-            benchmark_file,
-            print_lock,
-        )
+                if not benchmark_file:
+                    if display_manager:
+                        display_manager.add_error(model, f"No benchmark for {task_key}")
+                    continue
 
-        if result:
-            result_data = {"result": result, "task": task}
-            results.append(result_data)
+                future = executor.submit(
+                    run_single_evaluation_with_benchmark,
+                    model,
+                    task["reasoning_type"],
+                    task["complexity"],
+                    task["run_num"],
+                    benchmark_file,
+                    display_manager,
+                )
+                futures[future] = task
 
-            # Notify main thread that task completed
-            results_callback(result_data, task)
+            # Collect results as they complete
+            for future in as_completed(futures):
+                task = futures[future]
+                try:
+                    result = future.result()
+                    if result:
+                        result_data = {"result": result, "task": task}
+                        results.append(result_data)
 
-    with print_lock:
-        print(
+                        # Notify main thread that task completed
+                        results_callback(result_data, task)
+                except Exception as e:
+                    if display_manager:
+                        display_manager.add_error(
+                            model,
+                            f"Task failed: {task['reasoning_type']} C{task['complexity']} Run{task['run_num']}: {e}",
+                        )
+
+    if display_manager:
+        display_manager.add_info(
             f"✅ [{model_short}] Completed all tasks: {len(results)}/{len(tasks)} succeeded"
         )
 
@@ -494,11 +784,7 @@ def _main() -> None:
         print()
 
     start_time = time.time()
-    print_lock = Lock()
     results_lock = Lock()
-
-    # Track per-model progress
-    model_progress = {model: {"completed": 0, "total": 0} for model in MODELS}
 
     # Pre-generate all benchmark files
     print("\n📝 Pre-generating benchmark files...")
@@ -512,7 +798,7 @@ def _main() -> None:
             config["complexity"],  # type: ignore
             config["run_num"],  # type: ignore
             NUM_QUESTIONS,
-            print_lock,
+            None,  # No display manager during benchmark generation
         )
         if benchmark_file:
             benchmark_files[task_key] = benchmark_file
@@ -538,57 +824,13 @@ def _main() -> None:
             }
             if get_task_id(task) not in completed_tasks:
                 model_tasks[model].append(task)
-                model_progress[model]["total"] += 1
 
-    def print_progress_table() -> None:
-        """Print a nice progress table showing all models."""
-        with print_lock:
-            completed = len(completed_tasks)
-            elapsed = time.time() - start_time
-            rate = completed / elapsed if elapsed > 0 else 0
-            remaining_time = (total_tasks - completed) / rate if rate > 0 else 0
-
-            print("\n" + "=" * 100)
-            print(
-                f"📊 Overall Progress: {completed}/{total_tasks} tasks ({completed/total_tasks*100:.1f}%) | "
-                f"Elapsed: {elapsed/60:.1f}min | ETA: {remaining_time/60:.1f}min"
-            )
-            print("=" * 100)
-
-            # Print header
-            print(f"{'Model':<45} {'Progress':<20} {'Status':<15}")
-            print("-" * 100)
-
-            # Sort models by progress
-            sorted_models = sorted(
-                MODELS,
-                key=lambda m: model_progress[m]["completed"]
-                / max(model_progress[m]["total"], 1),
-                reverse=True,
-            )
-
-            for model in sorted_models:
-                model_short = model.split("/")[-1]
-                prog = model_progress[model]
-                if prog["total"] == 0:
-                    continue
-
-                pct = prog["completed"] / prog["total"] * 100
-                bar_width = 15
-                filled = int(bar_width * prog["completed"] / prog["total"])
-                bar = "█" * filled + "░" * (bar_width - filled)
-
-                status = (
-                    "✅ Complete"
-                    if prog["completed"] == prog["total"]
-                    else "🔄 Running"
-                )
-
-                print(
-                    f"{model_short:<45} [{bar}] {prog['completed']:>2}/{prog['total']:<2} ({pct:>5.1f}%)  {status}"
-                )
-
-            print("=" * 100)
+    # Create display manager
+    display_manager = (
+        DisplayManager(MODELS, total_tasks, start_time) if RICH_AVAILABLE else None
+    )
+    if display_manager:
+        display_manager.set_model_totals(model_tasks)
 
     # Callback to handle completed tasks
     def handle_result(result_data: Any, task: Any) -> None:
@@ -604,11 +846,8 @@ def _main() -> None:
             completed_tasks.add(get_task_id(task))
 
             # Update model progress
-            model_progress[task["model"]]["completed"] += 1
-
-            # Print progress table every 5 completions
-            if len(completed_tasks) % 5 == 0:
-                print_progress_table()
+            if display_manager:
+                display_manager.increment_model_progress(task["model"])
 
             # Save checkpoint periodically
             if len(completed_tasks) % CHECKPOINT_INTERVAL == 0:
@@ -622,42 +861,98 @@ def _main() -> None:
 
     # Run all models in parallel, each working through its own task queue
     print(f"\n🚀 Starting {len(MODELS)} parallel model threads...")
-    print(f"   Each model will work through its task queue independently")
+    print(f"   Each model will work through its task queue independently\n")
 
-    # Show initial progress table
-    print_progress_table()
+    if RICH_AVAILABLE and display_manager:
+        # Use Rich Live display with auto-updating
+        import threading
 
-    with ThreadPoolExecutor(max_workers=len(MODELS)) as executor:
-        futures = {}
-        for model in MODELS:
-            if model_tasks[model]:  # Only submit if there are tasks
-                future = executor.submit(
-                    run_model_tasks,
-                    model,
-                    model_tasks[model],
-                    benchmark_files,
-                    completed_tasks,
-                    print_lock,
-                    handle_result,
-                )
-                futures[future] = model
+        stop_refresh = threading.Event()
 
-        # Wait for all models to complete
-        for future in as_completed(futures):
-            model = futures[future]
-            model_short = model.split("/")[-1]
-            try:
-                future.result()
-                with print_lock:
+        def refresh_display(
+            live_display: Live, display_mgr: DisplayManager, stop_event: Any
+        ) -> None:
+            """Background thread to refresh display periodically."""
+            while not stop_event.is_set():
+                rendered = display_mgr.render()
+                if rendered is not None:
+                    live_display.update(rendered)
+                stop_event.wait(0.5)  # Update every 0.5 seconds
+
+        with Live(display_manager.render(), console=display_manager.console) as live:
+            # Start background refresh thread
+            refresh_thread = threading.Thread(
+                target=refresh_display,
+                args=(live, display_manager, stop_refresh),
+                daemon=True,
+            )
+            refresh_thread.start()
+
+            with ThreadPoolExecutor(max_workers=len(MODELS)) as executor:
+                futures = {}
+                for model in MODELS:
+                    if model_tasks[model]:  # Only submit if there are tasks
+                        future = executor.submit(
+                            run_model_tasks,
+                            model,
+                            model_tasks[model],
+                            benchmark_files,
+                            completed_tasks,
+                            display_manager,
+                            handle_result,
+                        )
+                        futures[future] = model
+
+                # Wait for all models to complete
+                for future in as_completed(futures):
+                    model = futures[future]
+                    model_short = model.split("/")[-1]
+                    try:
+                        future.result()
+                        if display_manager:
+                            display_manager.mark_model_complete(model)
+                            display_manager.add_info(
+                                f"🎉 [{model_short}] Finished all tasks!"
+                            )
+                    except Exception as e:
+                        if display_manager:
+                            display_manager.add_error(
+                                model, f"Failed with exception: {e}"
+                            )
+
+            # Stop the refresh thread
+            stop_refresh.set()
+            refresh_thread.join(timeout=1.0)
+    else:
+        # Fallback: simple print-based display
+        with ThreadPoolExecutor(max_workers=len(MODELS)) as executor:
+            futures = {}
+            for model in MODELS:
+                if model_tasks[model]:  # Only submit if there are tasks
+                    future = executor.submit(
+                        run_model_tasks,
+                        model,
+                        model_tasks[model],
+                        benchmark_files,
+                        completed_tasks,
+                        None,  # No display manager
+                        handle_result,
+                    )
+                    futures[future] = model
+
+            # Wait for all models to complete
+            for future in as_completed(futures):
+                model = futures[future]
+                model_short = model.split("/")[-1]
+                try:
+                    future.result()
                     print(f"\n🎉 [{model_short}] Finished all tasks!")
-            except Exception as e:
-                with print_lock:
+                except Exception as e:
                     print(f"\n✗ [{model_short}] Failed with exception: {e}")
 
-    # Show final progress table
     print("\n" + "=" * 100)
     print("🎉 ALL MODELS COMPLETED!")
-    print_progress_table()
+    print("=" * 100)
 
     # Clean up benchmark files
     print("\n🧹 Cleaning up benchmark files...")

@@ -4,7 +4,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import click
 from rich import print as rprint
@@ -240,7 +240,12 @@ def generate(
 @click.option(
     "--temperature", type=float, default=0.1, help="Sampling temperature (0.0-2.0)"
 )
-@click.option("--max-tokens", type=int, default=None, help="Maximum tokens to generate (default: use model's natural limit)")
+@click.option(
+    "--max-tokens",
+    type=int,
+    default=None,
+    help="Maximum tokens to generate (default: use model's natural limit)",
+)
 @click.option(
     "--no-context",
     is_flag=True,
@@ -251,6 +256,12 @@ def generate(
     type=int,
     default=None,
     help="Process questions in batches (for rate limiting)",
+)
+@click.option(
+    "--max-concurrent",
+    type=int,
+    default=10,
+    help="Maximum concurrent question evaluations (1=serial, 10=default)",
 )
 @click.option(
     "--output-info",
@@ -265,9 +276,10 @@ def evaluate(
     output_dir: Optional[str],
     api_key: Optional[str],
     temperature: float,
-    max_tokens: int,
+    max_tokens: Optional[int],
     no_context: bool,
     batch_size: Optional[int],
+    max_concurrent: int,
     output_info: Optional[str],
 ) -> None:
     """Evaluate a model on a benchmark dataset."""
@@ -305,7 +317,7 @@ def evaluate(
 
         # Create LLM evaluator
         with console.status("[bold green]Setting up LLM provider..."):
-            provider_config = {
+            provider_config: Dict[str, Any] = {
                 # "api_key": api_key,
                 "temperature": temperature,
             }
@@ -345,6 +357,7 @@ def evaluate(
 
         if batch_size:
             console.print(f"Batch size: {batch_size}")
+            console.print(f"Concurrent requests: {max_concurrent}")
             # Process in batches
             all_results = []
             for i in range(0, len(questions), batch_size):
@@ -354,7 +367,11 @@ def evaluate(
                 )
 
                 batch_summary = evaluator.evaluate_questions(
-                    batch, kg, include_context=include_context, show_progress=True
+                    batch,
+                    kg,
+                    include_context=include_context,
+                    show_progress=True,
+                    max_concurrent=max_concurrent,
                 )
                 all_results.extend(batch_summary.results)
 
@@ -369,8 +386,13 @@ def evaluate(
 
         else:
             # Process all at once
+            console.print(f"Concurrent requests: {max_concurrent}")
             summary = evaluator.evaluate_questions(
-                questions, kg, include_context=include_context, show_progress=True
+                questions,
+                kg,
+                include_context=include_context,
+                show_progress=True,
+                max_concurrent=max_concurrent,
             )
 
         # Display results

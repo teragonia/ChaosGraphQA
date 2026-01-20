@@ -8,12 +8,17 @@ This module defines the unified interface for all LLM providers:
 - Rate limiting and error handling
 """
 
+import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+
+# Module-level provider semaphores for concurrent request rate limiting
+_PROVIDER_SEMAPHORES: Dict[str, threading.Semaphore] = {}
+_SEMAPHORE_LOCK = threading.Lock()
 
 
 class LLMConfig(BaseModel):
@@ -27,13 +32,19 @@ class LLMConfig(BaseModel):
         default=None, description="API key for authentication"
     )
     api_base: Optional[str] = Field(default=None, description="Custom API base URL")
-    max_tokens: Optional[int] = Field(default=None, description="Maximum tokens to generate (None = use model default)")
+    max_tokens: Optional[int] = Field(
+        default=None,
+        description="Maximum tokens to generate (None = use model default)",
+    )
     temperature: float = Field(
         default=0.1, ge=0.0, le=2.0, description="Sampling temperature"
     )
     timeout: int = Field(default=180, description="Request timeout in seconds")
     rate_limit_delay: float = Field(
         default=0.1, description="Delay between requests (seconds)"
+    )
+    max_concurrent_requests: int = Field(
+        default=50, ge=1, description="Maximum concurrent requests for this provider"
     )
 
     extra_params: Dict[str, Any] = Field(
@@ -67,6 +78,17 @@ class BaseLLMProvider(ABC):
         self.config = config
         self.provider_name = config.provider_name
         self._setup_client()
+        self._init_semaphore()
+
+    def _init_semaphore(self) -> None:
+        """Initialize per-provider semaphore for rate limiting concurrent requests."""
+        global _PROVIDER_SEMAPHORES, _SEMAPHORE_LOCK
+
+        with _SEMAPHORE_LOCK:
+            if self.provider_name not in _PROVIDER_SEMAPHORES:
+                _PROVIDER_SEMAPHORES[self.provider_name] = threading.Semaphore(
+                    self.config.max_concurrent_requests
+                )
 
     @abstractmethod
     def _setup_client(self) -> None:
@@ -87,7 +109,7 @@ class BaseLLMProvider(ABC):
         pass
 
     def generate(self, prompt: str, **kwargs: Any) -> LLMResponse:
-        """Generate a response from the LLM.
+        """Generate a response from the LLM with rate limiting.
 
         Args:
             prompt: Input prompt
@@ -98,24 +120,17 @@ class BaseLLMProvider(ABC):
         """
         start_time = time.time()
 
+        # Acquire semaphore for rate limiting concurrent requests
+        semaphore = _PROVIDER_SEMAPHORES.get(self.provider_name)
+
         try:
-            if self.config.rate_limit_delay > 0:
-                time.sleep(self.config.rate_limit_delay)
-
-            request_params = {
-                "temperature": self.config.temperature,
-                **self.config.extra_params,
-                **kwargs,
-            }
-
-            # Only include max_tokens if it's explicitly set (not None)
-            if self.config.max_tokens is not None:
-                request_params["max_tokens"] = self.config.max_tokens
-
-            response = self._make_request(prompt, **request_params)
-            response.response_time = time.time() - start_time
-
-            return response
+            # Use semaphore if available (concurrent mode)
+            if semaphore:
+                with semaphore:
+                    return self._generate_internal(prompt, start_time, **kwargs)
+            else:
+                # No semaphore (shouldn't happen, but fallback)
+                return self._generate_internal(prompt, start_time, **kwargs)
 
         except Exception as e:
             return LLMResponse(
@@ -126,6 +141,37 @@ class BaseLLMProvider(ABC):
                 error_type=type(e).__name__,
                 response_time=time.time() - start_time,
             )
+
+    def _generate_internal(
+        self, prompt: str, start_time: float, **kwargs: Any
+    ) -> LLMResponse:
+        """Internal generate logic with rate limiting delay and request handling.
+
+        Args:
+            prompt: Input prompt
+            start_time: Timestamp when generation started
+            **kwargs: Additional parameters
+
+        Returns:
+            LLMResponse object
+        """
+        if self.config.rate_limit_delay > 0:
+            time.sleep(self.config.rate_limit_delay)
+
+        request_params = {
+            "temperature": self.config.temperature,
+            **self.config.extra_params,
+            **kwargs,
+        }
+
+        # Only include max_tokens if it's explicitly set (not None)
+        if self.config.max_tokens is not None:
+            request_params["max_tokens"] = self.config.max_tokens
+
+        response = self._make_request(prompt, **request_params)
+        response.response_time = time.time() - start_time
+
+        return response
 
     def batch_generate(self, prompts: List[str], **kwargs: Any) -> List[LLMResponse]:
         """Generate responses for multiple prompts.
@@ -166,8 +212,43 @@ class BaseLLMProvider(ABC):
             answer_type, question_type, question
         )
 
-        base_prompt = f"""Context: {context}
+        # Add special instructions for conflicting benchmarks
+        conflicting_instructions = ""
+        if question_type == "conflicting":
+            conflicting_instructions = """
+CRITICAL INSTRUCTIONS FOR REASONING ABOUT CONFLICTING INFORMATION:
 
+When determining if entities are "connected through consistent (non-conflicting) relationships":
+
+1. IDENTIFY CONTRADICTORY RELATIONSHIPS (not entities):
+   Examine relationships for semantic contradictions:
+   - Multiple mutually exclusive states: "X has_state Is Full" AND "X has_state Is Empty"
+   - Contradictory type assignments: "X is_a Cat" AND "X is_a Dog" (if mutually exclusive)
+   - Explicit contradictions: "X contradicts Y" means X and Y cannot coexist
+   - Temporal impossibilities: cycles in temporal ordering
+
+2. MARK ONLY THE SPECIFIC CONTRADICTORY RELATIONSHIPS AS INVALID:
+   IMPORTANT: If entity A has contradictory relationships, only those SPECIFIC relationships are invalid.
+   Other relationships involving A may still be valid!
+
+   Example:
+   - "CKaqu has_state Is Full" (INVALID - contradictory)
+   - "CKaqu has_state Is Empty" (INVALID - contradictory)
+   - "CKaqu connected_to CNid" (STILL VALID - not contradictory)
+
+3. FIND PATHS USING ONLY VALID RELATIONSHIPS:
+   Build paths between entities using relationships that are NOT marked as invalid.
+   You CAN traverse through entities that have some contradictory relationships,
+   as long as you don't use the contradictory relationships themselves.
+
+4. ANSWER: Entities are "consistently connected" if there exists ANY path using exclusively valid relationships.
+
+Key principle: Avoid contradictory RELATIONSHIPS, not entities that have contradictions.
+
+"""
+
+        base_prompt = f"""Context: {context}
+{conflicting_instructions}
 Question: {question}
 
 {format_instructions}"""

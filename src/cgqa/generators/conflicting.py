@@ -135,6 +135,78 @@ class ConflictingGenerator(BaseGraphGenerator):
 
         return kg
 
+    def _ensure_connectivity(self, kg: KnowledgeGraph) -> KnowledgeGraph:
+        """Override base connectivity to mark bridge relationships properly.
+
+        For conflicting benchmarks, any bridge relationships added to connect
+        components should be marked as consistent=True to avoid accidentally
+        creating unmarked conflicts. CRITICAL: Do not create bridges between
+        mutually exclusive state entities.
+        """
+        nx_graph = kg.to_networkx(directed=False)
+        components = list(nx.connected_components(nx_graph))
+
+        if len(components) <= 1:
+            return kg
+
+        relation_types = [
+            "connected_to",
+            "associated_with",
+            "related_to",
+        ]  # Use bidirectional types for bridges
+
+        for i in range(len(components) - 1):
+            # Get nodes from each component, avoiding mutually exclusive states
+            comp1_nodes = list(components[i])
+            comp2_nodes = list(components[i + 1])
+
+            # Try to find non-exclusive-state nodes first
+            non_state_comp1 = [n for n in comp1_nodes if not n.startswith("state_")]
+            non_state_comp2 = [n for n in comp2_nodes if not n.startswith("state_")]
+
+            # Prefer connecting non-state entities
+            if non_state_comp1 and non_state_comp2:
+                node1 = self.rng.choice(non_state_comp1)
+                node2 = self.rng.choice(non_state_comp2)
+            elif non_state_comp1:
+                node1 = self.rng.choice(non_state_comp1)
+                node2 = self.rng.choice(comp2_nodes)
+            elif non_state_comp2:
+                node1 = self.rng.choice(comp1_nodes)
+                node2 = self.rng.choice(non_state_comp2)
+            else:
+                # Both components only have state entities - check for exclusivity
+                node1 = self.rng.choice(comp1_nodes)
+                node2 = self.rng.choice(comp2_nodes)
+
+                # Check if these states are mutually exclusive
+                entity1 = kg.entities.get(node1)
+                entity2 = kg.entities.get(node2)
+                if (
+                    entity1
+                    and entity2
+                    and entity1.properties.get("exclusive_group")
+                    == entity2.properties.get("exclusive_group")
+                ):
+                    # Don't create a bridge between mutually exclusive states
+                    # They should already have a "contradicts" edge
+                    continue
+
+            # Create bridge relationship with explicit consistent=True marking
+            rel = Relationship(
+                source=node1,
+                target=node2,
+                relation_type=self.rng.choice(relation_types),
+                properties={
+                    "consistent": True,
+                    "conflict_source": False,
+                    "bridge_relationship": True,
+                },
+            )
+            kg.add_relationship(rel)
+
+        return kg
+
     def _create_consistent_relationships(
         self, entities: Dict[str, Entity]
     ) -> List[Relationship]:
@@ -214,7 +286,10 @@ class ConflictingGenerator(BaseGraphGenerator):
             conflicts = method(kg, conflicts_per_type)
             conflict_relationships.extend(conflicts)
 
-        return conflict_relationships[:target_conflicts]  # Limit to target
+        # Don't arbitrarily slice off conflicts - return all that were created
+        # This is especially important for exclusivity conflicts where state entities
+        # have already been added to kg and MUST have their conflict relationships
+        return conflict_relationships
 
     def _create_direct_contradictions(
         self, kg: KnowledgeGraph, count: int
@@ -236,6 +311,14 @@ class ConflictingGenerator(BaseGraphGenerator):
             opposite_relation = self._get_opposite_relation(base_rel.relation_type)
 
             if opposite_relation:
+                # CRITICAL: Mark the ORIGINAL relationship as inconsistent too
+                # Both sides of a contradiction should be invalid
+                base_rel.properties["consistent"] = False
+                base_rel.properties["conflict_source"] = True
+                base_rel.properties["conflict_type"] = "direct_contradiction"
+                base_rel.properties["contradicts"] = opposite_relation
+
+                # Create the opposite relationship (also marked inconsistent)
                 conflict_rel = Relationship(
                     source=base_rel.source,
                     target=base_rel.target,
@@ -361,11 +444,17 @@ class ConflictingGenerator(BaseGraphGenerator):
                     kg.add_entity(cat2_entity)
 
                 # Create conflicting relationships
+                # BOTH relationships are marked as inconsistent since they contradict each other
                 conflict_rel1 = Relationship(
                     source=entity_id,
                     target=cat1_id,
                     relation_type="is_a",
-                    properties={"consistent": True, "conflict_source": False},
+                    properties={
+                        "consistent": False,
+                        "conflict_source": True,
+                        "conflict_type": "inheritance_conflict",
+                        "exclusive_with": cat2,
+                    },
                 )
 
                 conflict_rel2 = Relationship(
@@ -425,6 +514,9 @@ class ConflictingGenerator(BaseGraphGenerator):
             ["is_full", "is_empty"],
         ]
 
+        # Track which exclusive state pairs we've created
+        created_state_pairs = []
+
         for _ in range(count):
             entity_ids = list(kg.entities.keys())
             if not entity_ids:
@@ -432,6 +524,9 @@ class ConflictingGenerator(BaseGraphGenerator):
 
             entity_id = self.rng.choice(entity_ids)
             states = self.rng.choice(exclusive_states)
+
+            # Track state entities for this conflict
+            state_entities = []
 
             # Create both states for the same entity (conflict)
             for state in states:
@@ -443,9 +538,14 @@ class ConflictingGenerator(BaseGraphGenerator):
                         id=state_id,
                         name=state.replace("_", " ").title(),
                         entity_type="state",
-                        properties={"artificial": True},
+                        properties={
+                            "artificial": True,
+                            "exclusive_group": "_".join(sorted(states)),
+                        },
                     )
                     kg.add_entity(state_entity)
+
+                state_entities.append(state_id)
 
                 conflict_rel = Relationship(
                     source=entity_id,
@@ -461,7 +561,27 @@ class ConflictingGenerator(BaseGraphGenerator):
                 )
                 conflicts.append(conflict_rel)
 
-        return conflicts[:count]  # Limit to requested count
+            # CRITICAL FIX: Add a direct conflict relationship BETWEEN the two exclusive states
+            # This prevents _ensure_connectivity from creating consistent bridges between them
+            if len(state_entities) == 2:
+                state_pair = tuple(sorted(state_entities))
+                if state_pair not in created_state_pairs:
+                    # Create bidirectional conflict edge between exclusive states
+                    conflict_edge = Relationship(
+                        source=state_entities[0],
+                        target=state_entities[1],
+                        relation_type="contradicts",
+                        properties={
+                            "consistent": False,
+                            "conflict_source": True,
+                            "conflict_type": "exclusivity_conflict",
+                            "mutually_exclusive": True,
+                        },
+                    )
+                    conflicts.append(conflict_edge)
+                    created_state_pairs.append(state_pair)
+
+        return conflicts[: count * 3]  # Adjust limit to account for conflict edges
 
     def _detect_conflicts(self, kg: KnowledgeGraph) -> List[Dict[str, Any]]:
         """Detect and catalog conflicts in the graph."""

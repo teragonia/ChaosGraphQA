@@ -370,7 +370,7 @@ class WeightedGenerator(BaseGraphGenerator):
                     continue
 
         # Sort by confidence and return top paths
-        paths.sort(key=lambda x: x["confidence"], reverse=True)  # type: ignore
+        paths.sort(key=lambda x: x["confidence"], reverse=True)  # type: ignore[arg-type, return-value]
         return paths[:10]
 
     def _find_high_confidence_links(self, kg: KnowledgeGraph) -> List[Dict[str, Any]]:
