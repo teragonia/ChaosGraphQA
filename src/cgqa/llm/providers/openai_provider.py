@@ -8,7 +8,7 @@ from .base import BaseLLMProvider, LLMConfig, LLMResponse
 try:
     from openai import OpenAI
 except ImportError:
-    OpenAI = None  # type: ignore
+    OpenAI = None  # type: ignore[assignment,misc]
 
 
 class OpenAIProvider(BaseLLMProvider):
@@ -53,7 +53,7 @@ class OpenAIProvider(BaseLLMProvider):
 
     def _setup_client(self) -> None:
         """Initialize the OpenAI client."""
-        client_kwargs = {
+        client_kwargs: Dict[str, Any] = {
             "api_key": self.config.api_key,
             "timeout": self.config.timeout,
         }
@@ -61,7 +61,7 @@ class OpenAIProvider(BaseLLMProvider):
         if self.config.api_base:
             client_kwargs["base_url"] = self.config.api_base
 
-        self.client = OpenAI(**client_kwargs)  # type: ignore
+        self.client = OpenAI(**client_kwargs)
 
     def _make_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Make a request to OpenAI API using the responses interface."""
@@ -71,7 +71,7 @@ class OpenAIProvider(BaseLLMProvider):
             or self.config.model_name.startswith("o4")
             or self.config.model_name.startswith("gpt-5")
         )
-        request_params = {
+        request_params: Dict[str, Any] = {
             "model": self.config.model_name,
             "input": [{"role": "user", "content": prompt}],
         }

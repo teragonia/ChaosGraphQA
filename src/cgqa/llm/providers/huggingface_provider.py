@@ -16,7 +16,11 @@ except ImportError:
 
 try:
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+    from transformers import (
+        AutoModelForCausalLM,
+        AutoTokenizer,
+        pipeline,
+    )
 
     TRANSFORMERS_AVAILABLE = True
 except ImportError:

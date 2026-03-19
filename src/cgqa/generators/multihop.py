@@ -1,6 +1,6 @@
 """Multi-hop reasoning graph generator."""
 
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, cast
 
 import networkx as nx
 
@@ -220,7 +220,12 @@ class MultiHopGenerator(BaseGraphGenerator):
                     continue
 
         # Sort by path length and diversity
-        interesting_paths.sort(key=lambda x: (x["length"], len(set(x["relations"]))))  # type: ignore[call-overload]
+        interesting_paths.sort(
+            key=lambda x: (
+                -cast(int, x["length"]),
+                len(set(cast(Iterable[Any], x["relations"]))),
+            )
+        )
 
         # Return top paths for question generation
         return interesting_paths[:20]

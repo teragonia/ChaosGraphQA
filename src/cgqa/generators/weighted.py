@@ -1,6 +1,6 @@
 """Weighted reasoning graph generator."""
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import networkx as nx
 
@@ -370,7 +370,7 @@ class WeightedGenerator(BaseGraphGenerator):
                     continue
 
         # Sort by confidence and return top paths
-        paths.sort(key=lambda x: x["confidence"], reverse=True)  # type: ignore[arg-type, return-value]
+        paths.sort(key=lambda x: cast(float, x["confidence"]), reverse=True)
         return paths[:10]
 
     def _find_high_confidence_links(self, kg: KnowledgeGraph) -> List[Dict[str, Any]]:
