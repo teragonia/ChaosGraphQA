@@ -6,6 +6,7 @@ on:
     paths:
       - "assets/tapes/**"
       - "src/cgqa/cli/**"
+  workflow_dispatch:
 
 jobs:
   vhs:
