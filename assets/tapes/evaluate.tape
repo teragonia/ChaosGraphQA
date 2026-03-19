@@ -2,8 +2,8 @@ Output ../evaluate.gif
 
 Set Shell "bash"
 Set FontSize 13
-Set Width 110
-Set Height 36
+Set Width 1200
+Set Height 600
 Set Theme "Catppuccin Mocha"
 Set Padding 16
 Set TypingSpeed 40ms
