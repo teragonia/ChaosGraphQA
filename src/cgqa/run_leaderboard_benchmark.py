@@ -36,6 +36,7 @@ class ModelProgress(TypedDict):
     total: int
     completion_time: Optional[float]
 
+
 # Models to benchmark
 MODELS = [
     # Claude models
