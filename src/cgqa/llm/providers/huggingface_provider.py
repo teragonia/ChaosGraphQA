@@ -15,8 +15,8 @@ except ImportError:
     HF_HUB_AVAILABLE = False
 
 try:
-    import torch  # type: ignore[import-not-found]
-    from transformers import (  # type: ignore[import-not-found]
+    import torch
+    from transformers import (
         AutoModelForCausalLM,
         AutoTokenizer,
         pipeline,

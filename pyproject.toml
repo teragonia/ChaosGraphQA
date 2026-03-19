@@ -101,6 +101,22 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = true
 
+[[tool.mypy.overrides]]
+module = [
+    "openai",
+    "openai.*",
+    "anthropic",
+    "anthropic.*",
+    "google",
+    "google.*",
+    "huggingface_hub",
+    "huggingface_hub.*",
+    "torch",
+    "transformers",
+    "transformers.*",
+]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
