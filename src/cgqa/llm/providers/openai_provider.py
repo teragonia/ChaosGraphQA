@@ -71,7 +71,7 @@ class OpenAIProvider(BaseLLMProvider):
             or self.config.model_name.startswith("o4")
             or self.config.model_name.startswith("gpt-5")
         )
-        request_params = {
+        request_params: Dict[str, Any] = {
             "model": self.config.model_name,
             "input": [{"role": "user", "content": prompt}],
         }

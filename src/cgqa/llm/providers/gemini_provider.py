@@ -25,7 +25,7 @@ class GeminiProvider(BaseLLMProvider):
     def __init__(self, config: LLMConfig):
 
         try:
-            from google import genai
+            from google import genai  # type: ignore[import-untyped]
         except ImportError:
             raise ImportError(
                 "Google Gen AI package not installed. Install with: pip install google-genai"
@@ -47,7 +47,7 @@ class GeminiProvider(BaseLLMProvider):
         """Initialize the Gemini client."""
         try:
             from google import genai
-            from google.genai import types
+            from google.genai import types  # type: ignore[import-untyped]
         except ImportError:
             raise ImportError(
                 "Google Gen AI package not installed. Install with: pip install google-genai"

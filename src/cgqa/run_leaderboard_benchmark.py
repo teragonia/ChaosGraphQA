@@ -488,7 +488,9 @@ def load_checkpoint() -> Optional[Dict]:
             or config.get("num_questions") != NUM_QUESTIONS
             or config.get("num_runs") != NUM_RUNS
         ):
-            print("⚠️  Warning: Checkpoint configuration doesn't match current settings")
+            print(
+                "⚠️  Warning: Checkpoint configuration doesn't match current settings"
+            )
             print("   Starting fresh run instead of resuming")
             return None
 

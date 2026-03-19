@@ -65,7 +65,9 @@ class GraphAlgorithms:
         try:
             shortest_length = nx.shortest_path_length(self.nx_graph, start, end)
             all_paths = list(
-                nx.all_simple_paths(self.nx_graph, start, end, cutoff=shortest_length)
+                nx.all_simple_paths(
+                    self.nx_graph, start, end, cutoff=int(shortest_length)
+                )
             )
             return [path for path in all_paths if len(path) - 1 == shortest_length]
         except (nx.NetworkXNoPath, nx.NodeNotFound):
