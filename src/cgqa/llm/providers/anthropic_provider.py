@@ -87,7 +87,7 @@ class AnthropicProvider(BaseLLMProvider):
 
     def _setup_client(self) -> None:
         """Initialize the Anthropic client."""
-        client_kwargs = {
+        client_kwargs: Dict[str, Any] = {
             "api_key": self.config.api_key,
             "timeout": self.config.timeout,
         }
@@ -95,7 +95,7 @@ class AnthropicProvider(BaseLLMProvider):
         if self.config.api_base:
             client_kwargs["base_url"] = self.config.api_base
 
-        self.client = Anthropic(**client_kwargs)  # type: ignore
+        self.client = Anthropic(**client_kwargs)
 
     def _make_request(self, prompt: str, **kwargs: Any) -> LLMResponse:
         """Make a request to Anthropic API."""

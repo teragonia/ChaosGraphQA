@@ -117,6 +117,13 @@ module = [
 ]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = [
+    "cgqa.llm.providers.openai_provider",
+    "cgqa.llm.providers.anthropic_provider",
+]
+warn_unused_ignores = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
