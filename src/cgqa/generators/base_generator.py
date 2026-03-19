@@ -189,11 +189,9 @@ class BaseGraphGenerator(ABC):
 
         attempts = 0
         max_attempts = num_edges * 10  # Avoid infinite loops
+        target_count = len(kg.relationships) + num_edges
 
-        while (
-            len(kg.relationships) < len(existing_edges) + num_edges
-            and attempts < max_attempts
-        ):
+        while len(kg.relationships) < target_count and attempts < max_attempts:
             source = self.rng.choice(entity_ids)
             target = self.rng.choice(entity_ids)
             relation_type = self.rng.choice(relation_types)

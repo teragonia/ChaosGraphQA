@@ -222,7 +222,7 @@ class MultiHopGenerator(BaseGraphGenerator):
         # Sort by path length and diversity
         interesting_paths.sort(
             key=lambda x: (
-                cast(int, x["length"]),
+                -cast(int, x["length"]),
                 len(set(cast(Iterable[Any], x["relations"]))),
             )
         )
