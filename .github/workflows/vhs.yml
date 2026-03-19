@@ -30,29 +30,22 @@ jobs:
       - name: Install cgqa
         run: uv sync --extra dev
 
-      - name: Generate benchmark for demo
+      - name: Install VHS and dependencies
         run: |
-          uv run cgqa generate \
-            --generator-type multihop --complexity 2 \
-            --num-questions 5 --seed 42 \
-            --output /tmp/demo.json
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+          curl -fsSL https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 \
+            -o /usr/local/bin/ttyd && chmod +x /usr/local/bin/ttyd
+          curl -fsSL https://github.com/charmbracelet/vhs/releases/download/v0.9.0/vhs_0.9.0_Linux_x86_64.tar.gz \
+            | tar xz -C /tmp && sudo mv /tmp/vhs /usr/local/bin/vhs
+
+      - name: Add uv venv to PATH so cgqa is available to VHS
+        run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
 
       - name: Record generate demo
-        run: |
-          docker run --rm \
-            -v "$PWD:/vhs" \
-            -v "/tmp:/tmp" \
-            --network host \
-            ghcr.io/charmbracelet/vhs assets/tapes/generate.tape
+        run: vhs assets/tapes/generate.tape
 
       - name: Record evaluate demo
-        run: |
-          docker run --rm \
-            -v "$PWD:/vhs" \
-            -v "/tmp:/tmp" \
-            --network host \
-            -e ANTHROPIC_API_KEY \
-            ghcr.io/charmbracelet/vhs assets/tapes/evaluate.tape
+        run: vhs assets/tapes/evaluate.tape
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
