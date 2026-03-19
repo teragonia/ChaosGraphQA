@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
-    {name = "Teragonia"}
+    {name = "Teragonia", email = "oss@teragonia.com"}
 ]
 keywords = ["benchmark", "reasoning", "llm", "knowledge-graph", "evaluation"]
 classifiers = [
