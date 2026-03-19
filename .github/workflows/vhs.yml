@@ -1,0 +1,56 @@
+name: Update demo GIFs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "assets/tapes/**"
+      - "src/cgqa/cli/**"
+  workflow_dispatch:
+
+jobs:
+  vhs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install cgqa
+        run: uv sync --extra dev
+
+      - name: Generate benchmark for demo
+        run: |
+          uv run cgqa generate \
+            --generator-type multihop --complexity 2 \
+            --num-questions 5 --seed 42 \
+            --output /tmp/demo.json
+
+      - name: Record generate demo
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: assets/tapes/generate.tape
+
+      - name: Record evaluate demo
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: assets/tapes/evaluate.tape
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Commit updated GIFs
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: regenerate demo GIFs"
+          file_pattern: "assets/*.gif"
