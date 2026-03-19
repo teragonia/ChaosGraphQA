@@ -33,10 +33,10 @@ jobs:
       - name: Install VHS and dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y ffmpeg
-          curl -fsSL https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 \
-            -o /usr/local/bin/ttyd && chmod +x /usr/local/bin/ttyd
-          curl -fsSL https://github.com/charmbracelet/vhs/releases/download/v0.9.0/vhs_0.9.0_Linux_x86_64.tar.gz \
-            | tar xz -C /tmp && sudo mv /tmp/vhs /usr/local/bin/vhs
+          sudo curl -fsSL https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 \
+            -o /usr/local/bin/ttyd && sudo chmod +x /usr/local/bin/ttyd
+          go install github.com/charmbracelet/vhs@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
       - name: Add uv venv to PATH so cgqa is available to VHS
         run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
