@@ -53,7 +53,7 @@ jobs:
 
       - name: Record evaluate demo
         run: |
-          echo "export ANTHROPIC_API_KEY='${ANTHROPIC_API_KEY}'" >> ~/.bashrc
+          echo "export ANTHROPIC_API_KEY='${ANTHROPIC_API_KEY}'" > /tmp/cgqa_env.sh
           vhs assets/tapes/evaluate.tape
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

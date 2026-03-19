@@ -9,6 +9,8 @@ Set Padding 16
 Set TypingSpeed 40ms
 
 Hide
+Type "source /tmp/cgqa_env.sh"
+Enter
 Type "export PS1='$ '"
 Enter
 Show
