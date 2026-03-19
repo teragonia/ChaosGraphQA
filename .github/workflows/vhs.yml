@@ -44,8 +44,17 @@ jobs:
       - name: Record generate demo
         run: vhs assets/tapes/generate.tape
 
+      - name: Generate benchmark for evaluate demo
+        run: |
+          uv run cgqa generate \
+            --generator-type multihop --complexity 2 \
+            --num-questions 2 --seed 42 \
+            --output /tmp/demo.json
+
       - name: Record evaluate demo
-        run: vhs assets/tapes/evaluate.tape
+        run: |
+          echo "export ANTHROPIC_API_KEY='${ANTHROPIC_API_KEY}'" >> ~/.bashrc
+          vhs assets/tapes/evaluate.tape
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
