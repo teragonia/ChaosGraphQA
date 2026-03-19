@@ -24,7 +24,7 @@ Sleep 2s
 Type "cgqa evaluate /tmp/demo.json --model anthropic/claude-3.7-sonnet --output /tmp/results.json"
 Sleep 500ms
 Enter
-Sleep 8s
+Sleep 20s
 
 Type "cgqa analyze /tmp/results.json"
 Sleep 500ms
