@@ -1,4 +1,4 @@
-Output ../evaluate.gif
+Output assets/evaluate.gif
 
 Set Shell "bash"
 Set FontSize 13

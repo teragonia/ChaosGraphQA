@@ -1,4 +1,4 @@
-Output ../generate.gif
+Output assets/generate.gif
 
 Set Shell "bash"
 Set FontSize 13
