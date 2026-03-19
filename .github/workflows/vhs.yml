@@ -28,7 +28,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install cgqa
-        run: uv sync --extra dev
+        run: uv sync --extra dev --extra llm
 
       - name: Install VHS and dependencies
         run: |
