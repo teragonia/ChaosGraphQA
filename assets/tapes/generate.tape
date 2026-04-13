@@ -1,9 +1,9 @@
-Output ../generate.gif
+Output assets/generate.gif
 
 Set Shell "bash"
 Set FontSize 13
-Set Width 110
-Set Height 32
+Set Width 1200
+Set Height 550
 Set Theme "Catppuccin Mocha"
 Set Padding 16
 Set TypingSpeed 40ms

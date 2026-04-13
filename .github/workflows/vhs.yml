@@ -28,29 +28,24 @@ jobs:
           python-version: "3.11"
 
       - name: Install cgqa
-        run: uv sync --extra dev
+        run: uv sync --extra dev --extra llm
 
-      - name: Generate benchmark for demo
+      - name: Install VHS and dependencies
         run: |
-          uv run cgqa generate \
-            --generator-type multihop --complexity 2 \
-            --num-questions 5 --seed 42 \
-            --output /tmp/demo.json
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+          sudo curl -fsSL https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 \
+            -o /usr/local/bin/ttyd && sudo chmod +x /usr/local/bin/ttyd
+          go install github.com/charmbracelet/vhs@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Add uv venv to PATH so cgqa is available to VHS
+        run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
 
       - name: Record generate demo
-        uses: charmbracelet/vhs-action@v2
-        with:
-          path: assets/tapes/generate.tape
-
-      - name: Record evaluate demo
-        uses: charmbracelet/vhs-action@v2
-        with:
-          path: assets/tapes/evaluate.tape
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: vhs assets/tapes/generate.tape
 
       - name: Commit updated GIFs
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: regenerate demo GIFs"
-          file_pattern: "assets/*.gif"
+          file_pattern: "assets/generate.gif"
