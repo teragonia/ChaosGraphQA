@@ -44,22 +44,8 @@ jobs:
       - name: Record generate demo
         run: vhs assets/tapes/generate.tape
 
-      - name: Generate benchmark for evaluate demo
-        run: |
-          uv run cgqa generate \
-            --generator-type multihop --complexity 2 \
-            --num-questions 2 --seed 42 \
-            --output /tmp/demo.json
-
-      - name: Record evaluate demo
-        run: |
-          echo "export ANTHROPIC_API_KEY='${ANTHROPIC_API_KEY}'" > /tmp/cgqa_env.sh
-          vhs assets/tapes/evaluate.tape
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-
       - name: Commit updated GIFs
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: regenerate demo GIFs"
-          file_pattern: "assets/*.gif"
+          file_pattern: "assets/generate.gif"
