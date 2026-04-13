@@ -12,7 +12,7 @@ jobs:
   vhs:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -44,8 +44,8 @@ jobs:
       - name: Record generate demo
         run: vhs assets/tapes/generate.tape
 
-      - name: Commit updated GIFs
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Upload generate GIF as artifact
+        uses: actions/upload-artifact@v4
         with:
-          commit_message: "chore: regenerate demo GIFs"
-          file_pattern: "assets/generate.gif"
+          name: generate-gif
+          path: assets/generate.gif
