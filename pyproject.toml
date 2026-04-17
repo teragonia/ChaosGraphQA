@@ -19,7 +19,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -68,9 +67,9 @@ cgqa = "cgqa.cli.main:cli"
 cgqa_bm = "cgqa.run_leaderboard_benchmark:main"
 
 [project.urls]
-Homepage = "https://github.com/your-org/cgqa"
-Repository = "https://github.com/your-org/cgqa"
-Issues = "https://github.com/your-org/cgqa/issues"
+Homepage = "https://github.com/teragonia/ChaosGraphQA"
+Repository = "https://github.com/teragonia/ChaosGraphQA"
+Issues = "https://github.com/teragonia/ChaosGraphQA/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -80,7 +79,7 @@ where = ["src"]
 
 [tool.black]
 line-length = 88
-target-version = ['py38']
+target-version = ['py39']
 
 [tool.isort]
 profile = "black"
