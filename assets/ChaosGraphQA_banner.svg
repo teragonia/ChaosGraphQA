@@ -1,0 +1,221 @@
+<svg width="100%" viewBox="0 0 680 195" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>ChaosGraphQA Banner</title>
+  <desc>Chaotic space-themed knowledge graph banner for ChaosGraphQA.</desc>
+
+  <style>
+    @keyframes pulse { 0%,100%{opacity:.82} 50%{opacity:1} }
+    @keyframes flicker { 0%,100%{opacity:1} 42%{opacity:.65} 44%{opacity:1} 78%{opacity:.75} 80%{opacity:1} }
+    .hub   { animation: pulse   3s ease-in-out infinite; }
+    .flick { animation: flicker 6s ease-in-out infinite; }
+    .fl2   { animation: flicker 9s ease-in-out infinite 2s; }
+    .fl3   { animation: flicker 7s ease-in-out infinite 4s; }
+  </style>
+
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <radialGradient id="bg" cx="40%" cy="40%" r="75%">
+      <stop offset="0%" stop-color="#0c0a1e"/>
+      <stop offset="100%" stop-color="#040310"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="680" height="195" fill="url(#bg)"/>
+
+  <!-- Nebula washes -->
+  <ellipse cx="110" cy="75"  rx="190" ry="85"  fill="#4a1eaa" opacity="0.07"/>
+  <ellipse cx="570" cy="155" rx="190" ry="65"  fill="#0a4d77" opacity="0.08"/>
+  <ellipse cx="340" cy="100" rx="240" ry="90"  fill="#6a0e90" opacity="0.05"/>
+  <ellipse cx="630" cy="55"  rx="100" ry="55"  fill="#2a0e66" opacity="0.07"/>
+
+  <!-- Stars -->
+  <circle cx="18"  cy="14"  r="0.9" fill="#fff" opacity="0.85"/>
+  <circle cx="58"  cy="36"  r="0.5" fill="#ddf" opacity="0.6"/>
+  <circle cx="132" cy="8"   r="1.0" fill="#fff" opacity="0.8"/>
+  <circle cx="202" cy="24"  r="0.6" fill="#fff" opacity="0.6"/>
+  <circle cx="268" cy="6"   r="0.8" fill="#ccf" opacity="0.85"/>
+  <circle cx="318" cy="18"  r="0.5" fill="#fff" opacity="0.5"/>
+  <circle cx="408" cy="11"  r="0.9" fill="#fff" opacity="0.8"/>
+  <circle cx="474" cy="30"  r="0.6" fill="#ffe" opacity="0.65"/>
+  <circle cx="558" cy="7"   r="0.8" fill="#fff" opacity="0.85"/>
+  <circle cx="638" cy="25"  r="0.5" fill="#ddf" opacity="0.6"/>
+  <circle cx="666" cy="68"  r="0.7" fill="#fff" opacity="0.75"/>
+  <circle cx="674" cy="148" r="0.5" fill="#eef" opacity="0.5"/>
+  <circle cx="10"  cy="148" r="0.6" fill="#fff" opacity="0.55"/>
+  <circle cx="48"  cy="128" r="0.5" fill="#fff" opacity="0.65"/>
+  <circle cx="188" cy="162" r="0.4" fill="#fff" opacity="0.4"/>
+  <circle cx="466" cy="146" r="0.5" fill="#fff" opacity="0.5"/>
+  <circle cx="604" cy="134" r="0.6" fill="#fff" opacity="0.55"/>
+  <circle cx="80"  cy="72"  r="0.5" fill="#fff" opacity="0.6"/>
+  <circle cx="544" cy="174" r="0.4" fill="#ddf" opacity="0.45"/>
+
+  <!-- Background chaos lines (full-span low-opacity diagonals) -->
+  <line x1="30"  y1="148" x2="586" y2="44"  stroke="#9977bb" stroke-width="0.3"  opacity="0.12"/>
+  <line x1="250" y1="170" x2="640" y2="50"  stroke="#5588cc" stroke-width="0.28" opacity="0.11"/>
+  <line x1="60"  y1="28"  x2="620" y2="168" stroke="#44b89a" stroke-width="0.28" opacity="0.10"/>
+  <line x1="420" y1="170" x2="40"  y2="58"  stroke="#bb6688" stroke-width="0.28" opacity="0.10"/>
+  <line x1="130" y1="172" x2="660" y2="30"  stroke="#bb9944" stroke-width="0.25" opacity="0.09"/>
+
+  <!-- Original ring edges -->
+  <path d="M148 72 C 210 22, 355 32, 422 62"   fill="none" stroke="#8866cc" stroke-width="1.0" opacity="0.5"  marker-end="url(#arr)"/>
+  <path d="M422 62 C 504 40, 572 72, 592 138"  fill="none" stroke="#8866cc" stroke-width="0.9" opacity="0.42" marker-end="url(#arr)"/>
+  <path d="M62 120 C 84 74, 116 72, 148 72"    fill="none" stroke="#5588cc" stroke-width="0.7" opacity="0.38"/>
+  <!-- Original spokes to HUB -->
+  <path d="M148 72 C 214 104, 284 134, 318 147"  fill="none" stroke="#9977bb" stroke-width="1.1" opacity="0.55" marker-end="url(#arr)"/>
+  <path d="M422 62 C 402 102, 372 128, 352 144"  fill="none" stroke="#bb9944" stroke-width="0.9" opacity="0.5"  marker-end="url(#arr)"/>
+  <path d="M592 138 C 532 140, 412 146, 356 150" fill="none" stroke="#44aa88" stroke-width="0.8" opacity="0.45" marker-end="url(#arr)"/>
+  <path d="M62 120 C 134 134, 254 146, 312 150"  fill="none" stroke="#bb9944" stroke-width="0.6" opacity="0.38" marker-end="url(#arr)"/>
+  <!-- Original long diagonals -->
+  <path d="M148 72 C 432 288, 582 52, 592 138"   fill="none" stroke="#9977bb" stroke-width="0.35" opacity="0.16"/>
+  <path d="M62 120 C 340 300, 580 60, 592 138"   fill="none" stroke="#7755aa" stroke-width="0.3"  opacity="0.14"/>
+  <!-- Original medium-node connections -->
+  <line x1="216" y1="36"  x2="148" y2="72"  stroke="#9977bb" stroke-width="0.65" opacity="0.42"/>
+  <line x1="216" y1="36"  x2="422" y2="62"  stroke="#bb9944" stroke-width="0.55" opacity="0.38"/>
+  <line x1="216" y1="36"  x2="336" y2="148" stroke="#7755aa" stroke-width="0.45" opacity="0.28" marker-end="url(#arr2)"/>
+  <line x1="506" y1="38"  x2="422" y2="62"  stroke="#bb9944" stroke-width="0.65" opacity="0.42"/>
+  <line x1="506" y1="38"  x2="592" y2="138" stroke="#44b89a" stroke-width="0.55" opacity="0.38"/>
+  <line x1="506" y1="38"  x2="336" y2="148" stroke="#8866cc" stroke-width="0.45" opacity="0.28" marker-end="url(#arr2)"/>
+  <line x1="644" y1="100" x2="592" y2="138" stroke="#44b89a" stroke-width="0.75" opacity="0.48"/>
+  <line x1="644" y1="100" x2="506" y2="38"  stroke="#5588cc" stroke-width="0.55" opacity="0.38"/>
+  <line x1="34"  y1="84"  x2="62"  y2="120" stroke="#8866cc" stroke-width="0.65" opacity="0.42"/>
+  <line x1="34"  y1="84"  x2="148" y2="72"  stroke="#9977bb" stroke-width="0.55" opacity="0.38"/>
+  <line x1="34"  y1="84"  x2="216" y2="36"  stroke="#7755aa" stroke-width="0.45" opacity="0.32"/>
+  <line x1="286" y1="18"  x2="336" y2="130" stroke="#7755aa" stroke-width="0.38" opacity="0.32"/>
+  <line x1="286" y1="18"  x2="216" y2="36"  stroke="#9977bb" stroke-width="0.38" opacity="0.28"/>
+  <line x1="286" y1="18"  x2="422" y2="62"  stroke="#bb9944" stroke-width="0.35" opacity="0.24"/>
+  <line x1="398" y1="122" x2="336" y2="150" stroke="#44b89a" stroke-width="0.38" opacity="0.38" marker-end="url(#arr2)"/>
+  <line x1="398" y1="122" x2="496" y2="130" stroke="#44aa88" stroke-width="0.35" opacity="0.28"/>
+  <line x1="220" y1="154" x2="336" y2="150" stroke="#5588cc" stroke-width="0.38" opacity="0.38" marker-end="url(#arr2)"/>
+  <line x1="510" y1="162" x2="336" y2="154" stroke="#5aaa44" stroke-width="0.38" opacity="0.38" marker-end="url(#arr2)"/>
+  <line x1="258" y1="92"  x2="336" y2="130" stroke="#bb9944" stroke-width="0.38" opacity="0.38" marker-end="url(#arr2)"/>
+  <line x1="258" y1="92"  x2="148" y2="72"  stroke="#9977bb" stroke-width="0.35" opacity="0.28"/>
+  <line x1="106" y1="158" x2="62"  y2="120" stroke="#8866cc" stroke-width="0.38" opacity="0.35"/>
+  <line x1="554" y1="168" x2="592" y2="138" stroke="#44b89a" stroke-width="0.38" opacity="0.35"/>
+  <line x1="192" y1="46"  x2="148" y2="72"  stroke="#9977bb" stroke-width="0.38" opacity="0.35"/>
+  <line x1="192" y1="46"  x2="216" y2="36"  stroke="#7755aa" stroke-width="0.35" opacity="0.28"/>
+
+  <!-- New node G connections -->
+  <line x1="116" y1="122" x2="142" y2="128" stroke="#8866cc"  stroke-width="0.75" opacity="0.45"/>
+  <path d="M238 128 C 262 136, 292 146, 300 148" fill="none" stroke="#aa66cc" stroke-width="1.0" opacity="0.52" marker-end="url(#arr)"/>
+  <line x1="152" y1="96"  x2="178" y2="112" stroke="#9977bb"  stroke-width="0.8"  opacity="0.45" marker-end="url(#arr2)"/>
+  <path d="M238 118 C 290 96, 338 76, 370 66"    fill="none" stroke="#bb9944" stroke-width="0.75" opacity="0.42" marker-end="url(#arr)"/>
+  <line x1="192" y1="52"  x2="192" y2="112" stroke="#44b89a"  stroke-width="0.45" opacity="0.3"/>
+  <!-- New node D connections -->
+  <line x1="440" y1="146" x2="378" y2="150" stroke="#5aaa44"  stroke-width="0.9"  opacity="0.5"  marker-end="url(#arr2)"/>
+  <line x1="536" y1="142" x2="540" y2="136" stroke="#44b89a"  stroke-width="0.7"  opacity="0.42"/>
+  <path d="M482 128 C 466 106, 448 90, 424 86"  fill="none" stroke="#bb9944" stroke-width="0.75" opacity="0.42" marker-end="url(#arr)"/>
+  <line x1="488" y1="52"  x2="488" y2="128" stroke="#bb9944"  stroke-width="0.45" opacity="0.3"/>
+  <!-- G→D arc (cuts across the HUB area) -->
+  <path d="M238 132 C 294 118, 386 130, 440 140" fill="none" stroke="#cc8844" stroke-width="0.65" opacity="0.38"/>
+  <!-- Long cross-diagonal chaos -->
+  <path d="M202 80  C 290 96,  374 116, 440 132"  fill="none" stroke="#8866cc" stroke-width="0.5"  opacity="0.3"/>
+  <path d="M116 104 C 200 70,  302 52,  370 62"   fill="none" stroke="#5588cc" stroke-width="0.55" opacity="0.35"/>
+  <path d="M370 74  C 320 90,  278 108, 242 120"  fill="none" stroke="#bb6688" stroke-width="0.55" opacity="0.35" marker-end="url(#arr)"/>
+  <path d="M200 70  C 330 58,  462 98,  540 126"  fill="none" stroke="#44b89a" stroke-width="0.45" opacity="0.28" marker-end="url(#arr)"/>
+  <path d="M540 136 C 462 132, 342 130, 242 130"  fill="none" stroke="#44aa88" stroke-width="0.45" opacity="0.28"/>
+  <path d="M116 130 C 226 148, 356 154, 440 148"  fill="none" stroke="#bb6688" stroke-width="0.4"  opacity="0.22"/>
+  <path d="M422 62  C 320 90,  240 108, 192 120"  fill="none" stroke="#bb9944" stroke-width="0.38" opacity="0.2"/>
+  <path d="M62 120  C 170 100, 280 68,  370 52"   fill="none" stroke="#9977bb" stroke-width="0.35" opacity="0.18"/>
+
+  <!-- HUB -->
+  <g class="hub">
+    <rect x="300" y="128" width="78" height="44" rx="4" fill="#100820" stroke="#aa88ee" stroke-width="1.4"/>
+    <rect x="300" y="128" width="78" height="44" rx="4" fill="none" stroke="#7755aa" stroke-width="0.5" opacity="0.4"/>
+    <text x="308" y="142" font-family="'Courier New',Courier,monospace" font-size="6.5" fill="#7755aa" opacity="0.75">root@kg:~#</text>
+    <text x="308" y="155" font-family="'Courier New',Courier,monospace" font-size="8"   fill="#d4c0f8" font-weight="700">HUB.init()</text>
+    <text x="308" y="167" font-family="'Courier New',Courier,monospace" font-size="6"   fill="#9977bb" opacity="0.65">Ω graph kernel</text>
+  </g>
+
+  <!-- Node A -->
+  <g class="flick">
+    <rect x="96"  y="52" width="106" height="44" rx="4" fill="#0c091c" stroke="#8866cc" stroke-width="1.1"/>
+    <text x="104" y="66"  font-family="'Courier New',Courier,monospace" font-size="6.5" fill="#6644aa" opacity="0.75">$ node --eval</text>
+    <text x="104" y="78"  font-family="'Courier New',Courier,monospace" font-size="8"   fill="#c8b4f0" font-weight="700">entity.A</text>
+    <text x="104" y="90"  font-family="'Courier New',Courier,monospace" font-size="6"   fill="#9977bb" opacity="0.65">triples: 48,291</text>
+  </g>
+
+  <!-- Node B -->
+  <g class="fl2">
+    <rect x="370" y="44" width="106" height="44" rx="4" fill="#110d02" stroke="#aa8833" stroke-width="1.1"/>
+    <text x="378" y="58"  font-family="'Courier New',Courier,monospace" font-size="6.5" fill="#997722" opacity="0.75"># bench --run</text>
+    <text x="378" y="70"  font-family="'Courier New',Courier,monospace" font-size="8"   fill="#e8cc88" font-weight="700">entity.B</text>
+    <text x="378" y="82"  font-family="'Courier New',Courier,monospace" font-size="6"   fill="#bb9944" opacity="0.65">idx: 0x3FA8</text>
+  </g>
+
+  <!-- Node C -->
+  <g class="fl3">
+    <rect x="540" y="118" width="106" height="44" rx="4" fill="#020e0b" stroke="#338877" stroke-width="1.1"/>
+    <text x="548" y="132" font-family="'Courier New',Courier,monospace" font-size="6.5" fill="#226655" opacity="0.75">% query --exec</text>
+    <text x="548" y="144" font-family="'Courier New',Courier,monospace" font-size="8"   fill="#88ddc8" font-weight="700">entity.C</text>
+    <text x="548" y="156" font-family="'Courier New',Courier,monospace" font-size="6"   fill="#44b89a" opacity="0.65">lat: 2.4ms</text>
+  </g>
+
+  <!-- Node F -->
+  <g class="fl3">
+    <rect x="16"  y="98" width="100" height="44" rx="4" fill="#02050e" stroke="#336699" stroke-width="1.1"/>
+    <text x="24"  y="112" font-family="'Courier New',Courier,monospace" font-size="6.5" fill="#224477" opacity="0.75">&gt; sparql --q</text>
+    <text x="24"  y="124" font-family="'Courier New',Courier,monospace" font-size="8"   fill="#88b8e0" font-weight="700">entity.F</text>
+    <text x="24"  y="136" font-family="'Courier New',Courier,monospace" font-size="6"   fill="#5588cc" opacity="0.65">hits@10: 78%</text>
+  </g>
+
+  <!-- Node G (new — inference, purple-pink) -->
+  <g class="flick">
+    <rect x="142" y="112" width="100" height="36" rx="4" fill="#0c0710" stroke="#885599" stroke-width="1.1"/>
+    <text x="150" y="124" font-family="'Courier New',Courier,monospace" font-size="6.5" fill="#664477" opacity="0.75">$ infer --beam</text>
+    <text x="150" y="135" font-family="'Courier New',Courier,monospace" font-size="8"   fill="#d4a0e8" font-weight="700">entity.G</text>
+    <text x="150" y="144" font-family="'Courier New',Courier,monospace" font-size="6"   fill="#aa66cc" opacity="0.65">mrr: 0.447</text>
+  </g>
+
+  <!-- Node D (new — eval/rank, green) -->
+  <g class="fl2">
+    <rect x="440" y="128" width="96" height="36" rx="4" fill="#040e02" stroke="#3d7733" stroke-width="1.1"/>
+    <text x="448" y="140" font-family="'Courier New',Courier,monospace" font-size="6.5" fill="#2a5522" opacity="0.75">@ eval --f1</text>
+    <text x="448" y="151" font-family="'Courier New',Courier,monospace" font-size="8"   fill="#a0d888" font-weight="700">entity.D</text>
+    <text x="448" y="160" font-family="'Courier New',Courier,monospace" font-size="6"   fill="#5aaa44" opacity="0.65">rank: 0.912</text>
+  </g>
+
+  <!-- Medium nodes -->
+  <g>
+    <rect x="164" y="18" width="88" height="34" rx="3" fill="#020e0b" stroke="#338877" stroke-width="0.9"/>
+    <text x="172" y="31" font-family="'Courier New',Courier,monospace" font-size="6"   fill="#226655" opacity="0.75">% rel --list</text>
+    <text x="172" y="44" font-family="'Courier New',Courier,monospace" font-size="7"   fill="#88ddc8" font-weight="700">&lt;rel:0x22&gt;</text>
+  </g>
+  <g>
+    <rect x="440" y="18" width="88" height="34" rx="3" fill="#110d02" stroke="#aa8833" stroke-width="0.9"/>
+    <text x="448" y="31" font-family="'Courier New',Courier,monospace" font-size="6"   fill="#997722" opacity="0.75"># path --hop</text>
+    <text x="448" y="44" font-family="'Courier New',Courier,monospace" font-size="7"   fill="#e8cc88" font-weight="700">&lt;rel:0x5B&gt;</text>
+  </g>
+  <g>
+    <rect x="596" y="78" width="72" height="34" rx="3" fill="#02050e" stroke="#336699" stroke-width="0.9"/>
+    <text x="603" y="91" font-family="'Courier New',Courier,monospace" font-size="5.5" fill="#224477" opacity="0.75">&gt; wl --hash</text>
+    <text x="603" y="104" font-family="'Courier New',Courier,monospace" font-size="6.5" fill="#88b8e0" font-weight="700">gnn:layer3</text>
+  </g>
+  <g>
+    <rect x="10"  y="44" width="78" height="34" rx="3" fill="#110d02" stroke="#aa8833" stroke-width="0.9"/>
+    <text x="17"  y="57" font-family="'Courier New',Courier,monospace" font-size="5.5" fill="#997722" opacity="0.75"># map --uri</text>
+    <text x="17"  y="70" font-family="'Courier New',Courier,monospace" font-size="6.5" fill="#e8cc88" font-weight="700">ns:kg_v2</text>
+  </g>
+
+  <!-- Micro pill nodes -->
+  <rect x="278" y="14"  width="54" height="18" rx="3" fill="#0c091c" stroke="#8866cc" stroke-width="0.6"/>
+  <text x="305" y="26"  text-anchor="middle" font-family="'Courier New',Courier,monospace" font-size="6" fill="#c8b4f0">0x·A1F</text>
+  <rect x="246" y="86"  width="60" height="18" rx="3" fill="#110d02" stroke="#aa8833" stroke-width="0.6"/>
+  <text x="276" y="98"  text-anchor="middle" font-family="'Courier New',Courier,monospace" font-size="6" fill="#e8cc88">epoch:42</text>
+  <rect x="322" y="90"  width="50" height="16" rx="3" fill="#0c091c" stroke="#8866cc" stroke-width="0.6"/>
+  <text x="347" y="102" text-anchor="middle" font-family="'Courier New',Courier,monospace" font-size="6" fill="#c8b4f0">hop:3</text>
+  <rect x="390" y="108" width="46" height="16" rx="3" fill="#020e0b" stroke="#338877" stroke-width="0.6"/>
+  <text x="413" y="120" text-anchor="middle" font-family="'Courier New',Courier,monospace" font-size="6" fill="#88ddc8">rel→42</text>
+
+  <!-- Title zone -->
+  <line x1="80" y1="175" x2="600" y2="175" stroke="#7755aa" stroke-width="0.4" opacity="0.2" stroke-dasharray="4 8"/>
+  <rect x="190" y="178" width="300" height="16" rx="4" fill="#0d0a20" opacity="0.85"/>
+  <rect x="190" y="178" width="300" height="16" rx="4" fill="none" stroke="#7755aa" stroke-width="0.5" opacity="0.3"/>
+  <text x="340" y="190" text-anchor="middle" font-family="'Courier New',Courier,monospace" font-size="13" font-weight="700" letter-spacing="0.5">
+    <tspan fill="#d4869a">Chaos</tspan><tspan fill="#74c8b4">Graph</tspan><tspan fill="#d4b86a">QA</tspan>
+  </text>
+
+</svg>

@@ -1,57 +1,135 @@
 # ChaosGraphQA Benchmark Results
 
-**Date**: November 10, 2025
-**Total Evaluations**: 720 (12 models × 5 reasoning types × 4 complexity levels × 3 runs)
-**Questions per Evaluation**: 20
+**Date**: January 14, 2026
+**Models Evaluated**: 13
+**Total Runs**: 780 (13 models × 5 reasoning types × 4 complexity levels × 3 runs)
+**Total Question-Evaluations**: 7,218
 
 ---
 
 ## 🏆 Overall Leaderboard Rankings
 
-| Rank | Model | Accuracy | Score | Configs |
-|------|-------|----------|-------|---------|
-| 🥇 1 | **GPT-5** | **79.0%** | **0.795** | 20 |
-| 🥈 2 | **GPT-5-mini** | **75.0%** | **0.763** | 20 |
-| 🥉 3 | **GPT-4.1** | **71.8%** | **0.731** | 20 |
-| 4 | Claude Sonnet 4.5 (20250929) | 69.7% | 0.716 | 20 |
-| 5 | Claude Sonnet 4 (20250514) | 69.6% | 0.713 | 20 |
-| 6 | Claude 3.5 Sonnet (20241022) | 68.4% | 0.701 | 20 |
-| 7 | GPT-4o | 64.6% | 0.673 | 20 |
-| 8 | Gemini 2.0 Flash | 63.6% | 0.665 | 20 |
-| 9 | Claude 3.5 Haiku (20241022) | 60.5% | 0.627 | 20 |
-| 10 | Gemini 2.5 Flash | 45.0% | 0.451 | 20 |
-| 11 | SmolLM3-3B | 41.2% | 0.482 | 20 |
-| 12 | Gemini 2.5 Pro | 26.3% | 0.275 | 20 |
+| Rank | Model | Accuracy | Avg Tokens |
+|------|-------|----------|------------|
+| 🥇 1 | **gemini-3-pro-preview** | **90.6%** | 51,255 |
+| 🥈 2 | **claude-sonnet-4-5 (20250929)** | **88.7%** | 39,512 |
+| 🥉 3 | **gemini-3-flash-preview** | **88.4%** | 35,574 |
+| 4 | claude-sonnet-4 (20250514) | 87.4% | 38,984 |
+| 5 | gemini-2.5-flash | 82.3% | 118,116 |
+| 6 | claude-3.7-sonnet (20250219) | 81.3% | 28,448 |
+| 7 | gpt-5.2 | 80.9% | 29,511 |
+| 8 | gpt-5-mini | 77.9% | 26,383 |
+| 9 | gemini-2.0-flash | 75.6% | 38,623 |
+| 10 | gpt-4o | 74.7% | 31,036 |
+| 11 | claude-3.5-haiku (20241022) | 70.2% | 32,208 |
+| 12 | gpt-5-nano | 50.3% | 23,489 |
+| 13 | SmolLM3-3B | 38.0% | 12,544 |
 
 ---
 
 ## 📊 Key Insights
 
 ### Top Performers
-- **GPT-5** dominates with 79% accuracy, showing strong reasoning across all types
-- **GPT-5-mini** achieves impressive 75% accuracy at likely lower cost
-- **GPT-4.1** rounds out the top 3 with 71.8% accuracy
+- **gemini-3-pro-preview** leads with 90.6% accuracy, strong across nearly every reasoning type
+- **claude-sonnet-4-5** is a close 2nd at 88.7% and tops the multihop category
+- **gemini-3-flash-preview** rounds out the top 3 at 88.4% while being the most reliable model overall
 
 ### Claude Models
-- **Claude Sonnet 4.5** (latest) achieves 69.7%, placing 4th overall
-- Claude models show consistent performance (68-70% range) across versions
-- Strong showing in complex reasoning tasks
+- **Claude Sonnet 4.5** (88.7%) and **Claude Sonnet 4** (87.4%) sit in the top tier
+- **Claude 3.7 Sonnet** holds 81.3%; **Claude 3.5 Haiku** trails the family at 70.2%
+- Strongest showing in multihop reasoning, where Sonnet 4.5 ranks 1st
 
 ### Gemini Models
-- **Gemini 2.0 Flash** performs reasonably at 63.6% (8th place)
-- **Gemini 2.5 Flash** significantly lower at 45% (10th place)
-- **Gemini 2.5 Pro** unexpectedly lowest at 26.3% - possible API/parsing issues
+- **Gemini 3 Pro/Flash Preview** take 1st and 3rd overall
+- **Gemini 2.5 Flash** performs well at 82.3% but is by far the most token-hungry model (118K avg)
+- **Gemini 2.0 Flash** is solid at 75.6% and notably strong on temporal reasoning
 
-### Small Models
-- **SmolLM3-3B** achieves 41.2% accuracy despite being only 3B parameters
-- Impressive given size constraints compared to frontier models
+### Small / Efficient Models
+- **gpt-5-nano** (50.3%) and **SmolLM3-3B** (38.0%) anchor the bottom of the table
+- **SmolLM3-3B** is the most token-efficient model (0.03 accuracy per 1K tokens), impressive for a 3B-parameter model despite the accuracy gap
+
+---
+
+## 🧠 Performance by Reasoning Type
+
+Easiest type overall: **Hierarchical** (88.1% avg). Hardest type overall: **Weighted** (68.3% avg).
+
+### Conflicting Reasoning
+| Rank | Model | Accuracy |
+|------|-------|----------|
+| 1 | gemini-3-pro-preview | 99.2% |
+| 2 | claude-sonnet-4 (20250514) | 95.8% |
+| 3 | gemini-2.5-flash | 94.2% |
+| 4 | gemini-3-flash-preview | 92.5% |
+| 5 | claude-sonnet-4-5 (20250929) | 90.0% |
+
+### Hierarchical Reasoning
+| Rank | Model | Accuracy |
+|------|-------|----------|
+| 1 | gemini-3-flash-preview | 100.0% |
+| 2 | gpt-5-mini | 99.2% |
+| 3 | claude-sonnet-4-5 (20250929) | 99.2% |
+| 4 | gpt-4o | 95.0% |
+| 5 | gemini-3-pro-preview | 93.3% |
+
+### Multihop Reasoning
+| Rank | Model | Accuracy |
+|------|-------|----------|
+| 1 | claude-sonnet-4-5 (20250929) | 92.5% |
+| 2 | gemini-3-pro-preview | 91.7% |
+| 3 | claude-sonnet-4 (20250514) | 90.8% |
+| 4 | gemini-3-flash-preview | 84.2% |
+| 5 | claude-3.7-sonnet (20250219) | 75.8% |
+
+### Temporal Reasoning
+| Rank | Model | Accuracy |
+|------|-------|----------|
+| 1 | gpt-5.2 | 85.3% |
+| 2 | claude-3.7-sonnet (20250219) | 84.6% |
+| 3 | gemini-2.0-flash | 84.4% |
+| 4 | claude-sonnet-4 (20250514) | 83.8% |
+| 5 | gemini-2.5-flash | 82.0% |
+
+### Weighted Reasoning
+| Rank | Model | Accuracy |
+|------|-------|----------|
+| 1 | gemini-3-pro-preview | 87.5% |
+| 2 | gemini-3-flash-preview | 84.2% |
+| 3 | claude-sonnet-4-5 (20250929) | 80.0% |
+| 4 | claude-sonnet-4 (20250514) | 76.7% |
+| 5 | claude-3.7-sonnet (20250219) | 75.8% |
+
+---
+
+## 🎯 Reliability Analysis
+
+Coefficient of variation (CV) across runs — lower is more consistent.
+
+| Rank | Model | CV |
+|------|-------|----|
+| 1 | gemini-3-flash-preview | 0.089 |
+| 2 | claude-sonnet-4 (20250514) | 0.097 |
+| 3 | gemini-3-pro-preview | 0.105 |
+| 4 | claude-sonnet-4-5 (20250929) | 0.105 |
+| 5 | gemini-2.5-flash | 0.140 |
+| … | … | … |
+| 12 | gpt-5-nano | 0.414 |
+| 13 | SmolLM3-3B | 0.437 |
+
+---
+
+## 🔬 Statistical Notes
+
+- **Bonferroni-corrected significance level**: α = 0.000641
+- **Significant pairwise differences**: 22
+- **Largest effect size**: SmolLM3-3B vs gemini-3-pro-preview, |Cohen's d| = 3.33 (large)
 
 ---
 
 ## 🧠 Benchmark Configuration
 
 ### Reasoning Types (5 total)
-1. **Multi-hop**: Path-finding across 2-6 relationship hops
+1. **Multi-hop**: Path-finding across 2–6 relationship hops
 2. **Hierarchical**: Taxonomy and inheritance reasoning
 3. **Temporal**: Time-based causal chains and sequences
 4. **Weighted**: Probabilistic relationships with confidence scores
@@ -65,41 +143,19 @@
 
 ### Evaluation Details
 - **3 runs per configuration** for statistical reliability
-- **20 questions** per evaluation
 - **Mean ± Standard Deviation** calculated across runs
 - Ground truth verification using graph algorithms (BFS/DFS, cycle detection)
 
 ---
 
-## 💡 Notable Observations
-
-1. **Clear Performance Tiers**:
-   - Tier 1 (GPT-5 family): 72-79%
-   - Tier 2 (Claude 4.x, Claude 3.5 Sonnet): 68-70%
-   - Tier 3 (GPT-4o, Gemini 2.0): 64-66%
-   - Tier 4 (Others): <60%
-
-2. **Model Size vs Performance**:
-   - Frontier models significantly outperform smaller alternatives
-   - SmolLM3-3B shows promise but gap remains substantial
-
-3. **Consistency**:
-   - All models completed 20/20 configurations (5 types × 4 levels)
-   - Statistical reliability from 3-run averaging
-
-4. **Anti-Benchmaxxing Success**:
-   - Dynamically generated graphs prevent memorization
-   - Wide performance spread indicates genuine reasoning assessment
-
----
-
 ## 📁 Data Location
 
-Generated files from the experiment run will be found in:
+Generated files from the experiment run can be found in:
 
-- **Full Results**: `results/{date}/leaderboard_summary_{number}.json`
-- **Per-Model Detailed Results**: `results/{date}/{model_name}/`
-- **Checkpoint Data**: `leaderboard_checkpoint.json` (removed on successful completion)
+- **Overall Leaderboard**: `analysis_output/figures/01_overall_leaderboard.csv`
+- **Per-Question Results**: `analysis_output/data/individual_results.csv`
+- **Full Analysis Report**: `analysis_output/section_7_report.md`
+- **Figures**: `analysis_output/figures/`
 
 ---
 
@@ -116,4 +172,4 @@ For detailed methodology, see the [main README](README.md).
 
 ---
 
-*Generated from ChaosGraphQA Leaderboard Benchmark - November 10, 2025*
+*Generated from ChaosGraphQA Leaderboard Benchmark - January 14, 2026*
